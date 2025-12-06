@@ -1,0 +1,7 @@
+GetMessage
+TranslateMessage
+DispatchMessage
+SetWinEventHook
+EVENT_SYSTEM_FOREGROUND
+GetClassName
+GetWindowText
