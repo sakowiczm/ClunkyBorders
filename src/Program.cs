@@ -4,6 +4,15 @@ using Windows.Win32.UI.Accessibility;
 
 Console.WriteLine($"ClunkyBorder Starting");
 
+HashSet<string> classNamesToExclude = new HashSet<string>()
+{
+    "Windows.UI.Core.CoreWindow",               // Windows Start menu
+    "Shell_TrayWnd",                            // Windows taskbar
+    "TopLevelWindowForOverflowXamlIsland",      // Windows tray show hidden icons
+    "XamlExplorerHostIslandWindow",             // Windows Task Swicher
+    "ForegroundStaging",                        // Windows Task Swicher - temporary window
+};
+
 var hookHwnd = PInvoke.SetWinEventHook(
     PInvoke.EVENT_SYSTEM_FOREGROUND,
     PInvoke.EVENT_SYSTEM_FOREGROUND,
@@ -14,7 +23,7 @@ var hookHwnd = PInvoke.SetWinEventHook(
     0x0000u | 0x0002u
 );
 
-
+// todo: get currently active window - hook only gets the change
 
 Console.WriteLine($"Event loop...");
 
@@ -25,31 +34,6 @@ while (PInvoke.GetMessage(out var msg, HWND.Null, 0, 0))
 }
 
 return 0;
-
-/*
- todo: add window filtering
-
-Active window changed:
-    Class Name: Shell_TrayWnd
-    Text: FAIL
-    HWND: 0x10112
-Active window changed:
-    Class Name: ForegroundStaging
-    Text: FAIL
-    HWND: 0x1016c
-Active window changed:
-    Class Name: XamlExplorerHostIslandWindow
-    Text: Task Switching
-    HWND: 0x106dc
-Active window changed:
-    Class Name: Windows.UI.Core.CoreWindow
-    Text: Search
-    HWND: 0x101dc
-Active window changed:
-    Class Name: TaskManagerWindow
-    Text: Task Manager
-    HWND: 0x160d5e
-*/
 
 
 void WindowEventCallback(
@@ -67,6 +51,13 @@ void WindowEventCallback(
             return;
 
         var windowClassName = GetWindowClassName(hwnd);
+
+        if(classNamesToExclude.Contains(windowClassName))
+        {
+            Console.WriteLine("Window excluded.");
+            return;
+        }
+
         var windowText = GetWindowText(hwnd);
 
         Console.WriteLine($"""
