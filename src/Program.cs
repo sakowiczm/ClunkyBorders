@@ -1,101 +1,44 @@
-﻿using Windows.Win32;
+﻿using ClunkyBorders;
+using Windows.Win32;
 using Windows.Win32.Foundation;
-using Windows.Win32.UI.Accessibility;
 
-Console.WriteLine($"ClunkyBorder Starting");
-
-HashSet<string> classNamesToExclude = new HashSet<string>()
+internal class Program
 {
-    "Windows.UI.Core.CoreWindow",               // Windows Start menu
-    "Shell_TrayWnd",                            // Windows taskbar
-    "TopLevelWindowForOverflowXamlIsland",      // Windows tray show hidden icons
-    "XamlExplorerHostIslandWindow",             // Windows Task Swicher
-    "ForegroundStaging",                        // Windows Task Swicher - temporary window
-};
-
-var hookHwnd = PInvoke.SetWinEventHook(
-    PInvoke.EVENT_SYSTEM_FOREGROUND,
-    PInvoke.EVENT_SYSTEM_FOREGROUND,
-    HMODULE.Null,
-    WindowEventCallback,
-    0,
-    0,
-    0x0000u | 0x0002u
-);
-
-// todo: get currently active window - hook only gets the change
-
-Console.WriteLine($"Event loop...");
-
-while (PInvoke.GetMessage(out var msg, HWND.Null, 0, 0))
-{
-    PInvoke.TranslateMessage(msg);
-    PInvoke.DispatchMessage(msg);
-}
-
-return 0;
-
-
-void WindowEventCallback(
-        HWINEVENTHOOK hWinEventHook,
-        uint @event,
-        HWND hwnd,
-        int idObject,
-        int idChild,
-        uint idEventThread,
-        uint dwmsEventTime)
-{
-    try
+    private static int Main(string[] args)
     {
-        if (@event != PInvoke.EVENT_SYSTEM_FOREGROUND)
-            return;
+        Console.WriteLine($"ClunkyBorder Starting");
 
-        var windowClassName = GetWindowClassName(hwnd);
+        // todo: app should have only one instance
 
-        if(classNamesToExclude.Contains(windowClassName))
+        var windowDetector = new ActiveWindowDetector();
+        windowDetector.WindowChanged += WindowChanged;
+
+        windowDetector.Start();
+
+        Console.WriteLine($"Event loop...");
+
+        while (PInvoke.GetMessage(out var msg, HWND.Null, 0, 0))
         {
-            Console.WriteLine("Window excluded.");
-            return;
+            PInvoke.TranslateMessage(msg);
+            PInvoke.DispatchMessage(msg);
         }
 
-        var windowText = GetWindowText(hwnd);
+        // todo: fix - right now it's not reachable
+        windowDetector.Stop();
 
-        Console.WriteLine($"""
-            Active window changed: 
-                Class Name: {(string.IsNullOrEmpty(windowClassName) ? "FAIL" : windowClassName)} 
-                Text: {(string.IsNullOrEmpty(windowText) ? "FAIL" : windowText)}
-                HWND: {hwnd}
-            """);
-            
+        return 0;
     }
-    catch (Exception ex)
+
+    private static void WindowChanged(object? sender, Window? window)
     {
-        Console.WriteLine($"Error: {ex}");
-    }
-}
-
-
-unsafe string GetWindowClassName(HWND hwnd)
-{
-    const int maxLength = 256;
-    var buffer = new char[maxLength];
-
-    fixed (char* pBuffer = buffer)
-    {
-        var length = PInvoke.GetClassName(hwnd, pBuffer, maxLength);
-        return length == 0 ? string.Empty : new string(pBuffer, 0, length);
-    }
-}
-
-
-unsafe string GetWindowText(HWND hwnd)
-{
-    const int maxLength = 256;
-    var buffer = new char[maxLength];
-
-    fixed (char* pBuffer = buffer)
-    {
-        var length = PInvoke.GetWindowText(hwnd, pBuffer, maxLength);
-        return length == 0 ? string.Empty : new string(pBuffer, 0, length);
+        try
+        {
+            var message = window == null ? "Window excluded." : window.ToString();
+            Console.WriteLine(message);
+        }
+        catch 
+        { 
+            Console.WriteLine($"Error handling WindowChanged event.");
+        }
     }
 }
