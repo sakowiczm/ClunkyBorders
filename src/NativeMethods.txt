@@ -2,6 +2,8 @@ GetMessage
 TranslateMessage
 DispatchMessage
 SetWinEventHook
+WINEVENT_OUTOFCONTEXT
+WINEVENT_SKIPOWNPROCESS
 EVENT_SYSTEM_FOREGROUND
 GetClassName
 GetWindowText

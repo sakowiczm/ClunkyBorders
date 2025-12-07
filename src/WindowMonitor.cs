@@ -1,10 +1,11 @@
-﻿using Windows.Win32;
+﻿using System.Reflection.Metadata;
+using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.UI.Accessibility;
 
 namespace ClunkyBorders
 {
-    internal class ActiveWindowDetector
+    internal class WindowMonitor
     {
         // todo: move to configuration
         HashSet<string> classNamesToExclude = new HashSet<string>()
@@ -16,7 +17,7 @@ namespace ClunkyBorders
             "ForegroundStaging",                        // Windows Task Swicher - temporary window
         };
 
-        public event EventHandler<Window?>? WindowChanged;
+        public event EventHandler<WindowInfo?>? WindowChanged;
 
         private bool _isStarted;
 
@@ -25,23 +26,23 @@ namespace ClunkyBorders
         {
             if (_isStarted)
             {
-                Console.WriteLine("ActiveWindowDetector is already started.");
+                Console.WriteLine("WindowMonitor is already started.");
                 return;
             }
 
-            Console.WriteLine("ActiveWindowDetector is starting...");
-
+            Console.WriteLine("WindowMonitor is starting...");
 
             // todo: what if this one is null?
             // todo: do I need handle somehow on Stop?
             var hookHwnd = PInvoke.SetWinEventHook(
-                PInvoke.EVENT_SYSTEM_FOREGROUND,
-                PInvoke.EVENT_SYSTEM_FOREGROUND,
-                HMODULE.Null,
-                OnWindowChange,
-                0,
-                0,
-                0x0000u | 0x0002u
+                PInvoke.EVENT_SYSTEM_FOREGROUND,        // Event Min
+                PInvoke.EVENT_SYSTEM_FOREGROUND,        // Event Max
+                HMODULE.Null,                           // In process hook
+                OnWindowChange,                         // In process callback function
+                0,                                      // All processes
+                0,                                      // All threads
+                PInvoke.WINEVENT_OUTOFCONTEXT           // In process hook
+                | PInvoke.WINEVENT_SKIPOWNPROCESS
             );
 
             var window = GetCurrentActiveWindow();
@@ -59,19 +60,18 @@ namespace ClunkyBorders
             if (!_isStarted)
                 return;
 
-            Console.WriteLine("ActiveWindowDetector is stopping...");
+            Console.WriteLine("WindowMonitor is stopping...");
 
             _isStarted = false;
         }
 
         private void OnWindowChange(
-                HWINEVENTHOOK hWinEventHook,
-                uint @event,
-                HWND hwnd,
-                int idObject,
-                int idChild,
-                uint idEventThread,
-                uint dwmsEventTime)
+            HWINEVENTHOOK hWinEventHook, // Handle to the event hook
+            uint @event,                 // Event type   
+            HWND hwnd,                   // Window that triggered the event
+            int idObject, int idChild,   
+            uint idEventThread,          // Thread that triggered the event
+            uint dwmsEventTime)          // Timestamp of the event
         {
             try
             {
@@ -91,7 +91,7 @@ namespace ClunkyBorders
 
         // todo: only partent windows - filter dialogs, splash screens etc.
         // todo: try catch if something is not right
-        private Window? GetWindow(HWND hwnd)
+        private WindowInfo? GetWindow(HWND hwnd)
         {
             var windowClassName = GetWindowClassName(hwnd);
 
@@ -103,7 +103,7 @@ namespace ClunkyBorders
 
             var windowText = GetWindowText(hwnd);
 
-            return new Window { Handle = hwnd, ClassName = windowClassName, Text = windowText };
+            return new WindowInfo { Handle = hwnd, ClassName = windowClassName, Text = windowText };
         }
 
         private unsafe string GetWindowClassName(HWND hwnd)
@@ -130,7 +130,7 @@ namespace ClunkyBorders
             }
         }
 
-        private Window? GetCurrentActiveWindow()
+        private WindowInfo? GetCurrentActiveWindow()
         {
             try
             {

@@ -10,8 +10,24 @@ internal class Program
 
         // todo: app should have only one instance
 
-        var windowDetector = new ActiveWindowDetector();
-        windowDetector.WindowChanged += WindowChanged;
+        var borderManager = new BorderManager();
+
+        var windowDetector = new WindowMonitor();
+        windowDetector.WindowChanged += (sender, windowInfo) =>
+        {
+            try
+            {
+                if (windowInfo != null)
+                    borderManager.Show(windowInfo);
+                else
+                    borderManager.Hide();
+            }
+            catch
+            {
+                Console.WriteLine($"Error handling WindowChanged event.");
+            }
+
+        };
 
         windowDetector.Start();
 
@@ -29,16 +45,4 @@ internal class Program
         return 0;
     }
 
-    private static void WindowChanged(object? sender, Window? window)
-    {
-        try
-        {
-            var message = window == null ? "Window excluded." : window.ToString();
-            Console.WriteLine(message);
-        }
-        catch 
-        { 
-            Console.WriteLine($"Error handling WindowChanged event.");
-        }
-    }
 }

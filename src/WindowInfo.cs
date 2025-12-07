@@ -2,7 +2,7 @@
 
 namespace ClunkyBorders
 {
-    internal record Window
+    internal record WindowInfo
     {
         public required HWND Handle { get; init; }
 
@@ -13,7 +13,7 @@ namespace ClunkyBorders
         public override string ToString()
         {
             return $"""
-                    Active window changed: 
+                    Window: 
                         Class Name: {(string.IsNullOrEmpty(ClassName) ? "FAIL" : ClassName)} 
                         Text: {(string.IsNullOrEmpty(Text) ? "FAIL" : Text)}
                         HWND: {Handle}
