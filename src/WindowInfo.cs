@@ -10,6 +10,8 @@ namespace ClunkyBorders
 
         public required string Text { get; init; }
 
+        public required RECT Rect { get; init; }
+
         public override string ToString()
         {
             return $"""

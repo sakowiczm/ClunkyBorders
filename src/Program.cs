@@ -11,6 +11,7 @@ internal class Program
         // todo: app should have only one instance
 
         var borderManager = new BorderManager();
+        borderManager.Init();
 
         var windowDetector = new WindowMonitor();
         windowDetector.WindowChanged += (sender, windowInfo) =>

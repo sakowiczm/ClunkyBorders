@@ -8,3 +8,13 @@ EVENT_SYSTEM_FOREGROUND
 GetClassName
 GetWindowText
 GetForegroundWindow
+GetModuleHandle
+WNDCLASSEXW
+DefWindowProc
+RegisterClassEx
+CreateWindowEx
+GetWindowRect
+SetWindowPos
+HWND_TOPMOST
+SET_WINDOW_POS_FLAGS
+ShowWindow

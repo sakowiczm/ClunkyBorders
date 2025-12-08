@@ -1,5 +1,4 @@
-﻿using System.Reflection.Metadata;
-using Windows.Win32;
+﻿using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.UI.Accessibility;
 
@@ -19,12 +18,12 @@ namespace ClunkyBorders
 
         public event EventHandler<WindowInfo?>? WindowChanged;
 
-        private bool _isStarted;
+        private bool isStarted;
 
         // todo: add try catch
         public void Start()
         {
-            if (_isStarted)
+            if (isStarted)
             {
                 Console.WriteLine("WindowMonitor is already started.");
                 return;
@@ -51,18 +50,18 @@ namespace ClunkyBorders
                 WindowChanged?.Invoke(this, window);
             }
 
-            _isStarted = true;
+            isStarted = true;
         }
 
         // todo: add try catch
         public void Stop()
         {
-            if (!_isStarted)
+            if (!isStarted)
                 return;
 
             Console.WriteLine("WindowMonitor is stopping...");
 
-            _isStarted = false;
+            isStarted = false;
         }
 
         private void OnWindowChange(
@@ -93,6 +92,8 @@ namespace ClunkyBorders
         // todo: try catch if something is not right
         private WindowInfo? GetWindow(HWND hwnd)
         {
+            // todoL check if hwnd is null
+
             var windowClassName = GetWindowClassName(hwnd);
 
             if (classNamesToExclude.Contains(windowClassName))
@@ -103,7 +104,10 @@ namespace ClunkyBorders
 
             var windowText = GetWindowText(hwnd);
 
-            return new WindowInfo { Handle = hwnd, ClassName = windowClassName, Text = windowText };
+            // todo: fail if not received
+            PInvoke.GetWindowRect(hwnd, out var rect);
+
+            return new WindowInfo { Handle = hwnd, ClassName = windowClassName, Text = windowText, Rect = rect };
         }
 
         private unsafe string GetWindowClassName(HWND hwnd)
