@@ -14,6 +14,7 @@ namespace ClunkyBorders
             "TopLevelWindowForOverflowXamlIsland",      // Windows tray show hidden icons
             "XamlExplorerHostIslandWindow",             // Windows Task Swicher
             "ForegroundStaging",                        // Windows Task Swicher - temporary window
+            "Progman"                                   // Program Manager - e.g when clicking a desktop
         };
 
         public event EventHandler<WindowInfo?>? WindowChanged;
@@ -75,6 +76,7 @@ namespace ClunkyBorders
             try
             {
                 // todo: handle resize as well
+                // todo: handle move
                 if (@event != PInvoke.EVENT_SYSTEM_FOREGROUND)
                     return;
 

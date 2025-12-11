@@ -18,3 +18,12 @@ SetWindowPos
 HWND_TOPMOST
 SET_WINDOW_POS_FLAGS
 ShowWindow
+GetDC
+ReleaseDC
+CreateCompatibleDC
+DeleteDC
+BITMAPINFO
+BITMAPINFOHEADER
+CreateDIBSection
+SelectObject
+UpdateLayeredWindow

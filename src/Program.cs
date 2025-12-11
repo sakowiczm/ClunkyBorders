@@ -16,6 +16,8 @@ internal class Program
         var windowDetector = new WindowMonitor();
         windowDetector.WindowChanged += (sender, windowInfo) =>
         {
+            // todo: when no window has focus e.g window is excluded - remove border from the last active window
+
             try
             {
                 if (windowInfo != null)
