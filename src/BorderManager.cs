@@ -8,24 +8,12 @@ namespace ClunkyBorders
 {
     internal class BorderManager
     {
-        /*
-        todo:
-            Current thinking - create new transparent window on top of the selected window
-            draw the border directly on that window & ensure it's click through (WS_EX_TRANSPARENT)
-
-        https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-createwindowexa
-        https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-registerclassexa
-        https://learn.microsoft.com/en-us/windows/win32/winmsg/window-styles
-        https://learn.microsoft.com/en-us/windows/win32/winmsg/extended-window-styles
-
-        https://github.com/northern/Win32Bitmaps
-
-        */
-
         private const string OverlayWindowClassName = "ClunkyBordersOverlayClass";
         private const string OverlayWindowName = "ClunkyBordersOverlay";
 
         private HWND overlayWindow;
+
+        private bool isOverlayWindowVisible = false;
 
         public unsafe void Init()
         {
@@ -39,13 +27,13 @@ namespace ClunkyBorders
             }
             catch(Exception ex)
             {
-                Console.WriteLine($"Error initializing overlay window: {ex}");
+                Console.WriteLine($"BorderManager -> Error initializing overlay window: {ex}");
             }
         }
 
         public void Show(WindowInfo window)
         {
-            Console.WriteLine($"Show border -> {window.ToString()}");
+            Console.WriteLine($"BorderManager -> Show border: {window.ToString()}");
 
             if (overlayWindow.IsNull)
             {
@@ -61,16 +49,38 @@ namespace ClunkyBorders
                 window.Rect.X, window.Rect.Y, window.Rect.Width, window.Rect.Height,
                 SET_WINDOW_POS_FLAGS.SWP_NOACTIVATE | SET_WINDOW_POS_FLAGS.SWP_SHOWWINDOW);
 
-            PInvoke.ShowWindow(overlayWindow, SHOW_WINDOW_CMD.SW_SHOWNOACTIVATE);
-
             RenderBorder(window);
 
-            Console.WriteLine($"Window size: {window.Rect.X}, {window.Rect.Y}, {window.Rect.Width}, {window.Rect.Height}");
+            if (!isOverlayWindowVisible)
+            {
+                PInvoke.ShowWindow(overlayWindow, SHOW_WINDOW_CMD.SW_SHOWNOACTIVATE);
+                isOverlayWindowVisible = true;
+
+                Console.WriteLine($"BorderManager -> Border is shown. Size: {window.Rect.X}, {window.Rect.Y}, {window.Rect.Width}, {window.Rect.Height}");
+            }
         }
 
         public void Hide() 
-        {
-            Console.WriteLine("Hide border -> window excluded");
+        { 
+            if(!isOverlayWindowVisible || overlayWindow.IsNull)
+            {
+                Console.WriteLine("BorderManager -> Cant hide border as it is not visible.");
+            }
+
+            try
+            {
+                PInvoke.ShowWindow(overlayWindow, SHOW_WINDOW_CMD.SW_HIDE);
+                isOverlayWindowVisible = false;
+
+
+                Console.WriteLine("BorderManager -> Border is hidden.");
+            }
+            catch (Exception ex)
+            {
+
+                Console.WriteLine($"BorderManager -> Error hidding border. Exception: {ex}.");
+            }
+
         }
 
         private unsafe void RenderBorder(WindowInfo window)
@@ -81,7 +91,7 @@ namespace ClunkyBorders
                 var screenDc = PInvoke.GetDC(HWND.Null);
                 if (screenDc == default)
                 {
-                    Console.WriteLine("Failed to get screen DC.");
+                    Console.WriteLine("BorderManager -> Failed to get screen DC.");
                 }
 
                 try
@@ -89,7 +99,7 @@ namespace ClunkyBorders
                     var memoryDc = PInvoke.CreateCompatibleDC(screenDc);
                     if (memoryDc == default)
                     {
-                        Console.WriteLine("Failed to create compatible DC.");
+                        Console.WriteLine("BorderManager -> Failed to create compatible DC.");
                         return;
                     }
 
@@ -119,7 +129,7 @@ namespace ClunkyBorders
                         var hBitmap = PInvoke.CreateDIBSection(memoryDc, &bmi, 0, &pBits, HANDLE.Null, 0);
                         if (hBitmap.IsNull)
                         {
-                            Console.WriteLine("Failed to create DIB section.");
+                            Console.WriteLine("BorderManager -> Failed to create DIB section.");
                             return;
                         }
 
@@ -142,7 +152,7 @@ namespace ClunkyBorders
                             if (!PInvoke.UpdateLayeredWindow(overlayWindow, default, null, &size, memoryDc,
                                 &winPtSrc, new COLORREF(0), &blend, UPDATE_LAYERED_WINDOW_FLAGS.ULW_ALPHA))
                             {
-                                Console.WriteLine($"UpdateLayeredWindow failed. Error: {Marshal.GetLastWin32Error()}");
+                                Console.WriteLine($"BorderManager -> UpdateLayeredWindow failed. Error: {Marshal.GetLastWin32Error()}");
                             }
 
                             // clean up
@@ -167,7 +177,7 @@ namespace ClunkyBorders
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error during RenderBorder, Exception: {ex}");
+                Console.WriteLine($"BorderManager -> Error during RenderBorder, Exception: {ex}");
             }
         }
 

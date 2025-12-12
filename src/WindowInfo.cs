@@ -12,14 +12,26 @@ namespace ClunkyBorders
 
         public required RECT Rect { get; init; }
 
+        public WindowState State { get; init; }
+
         public override string ToString()
         {
             return $"""
                     Window: 
                         Class Name: {(string.IsNullOrEmpty(ClassName) ? "FAIL" : ClassName)} 
                         Text: {(string.IsNullOrEmpty(Text) ? "FAIL" : Text)}
+                        State: {State.ToString()}
                         HWND: {Handle}
                     """;
         }
     }
+
+    enum WindowState
+    {
+        Hiden = 0,
+        Normal = 1,
+        Minimized = 2,
+        Maximized = 3,
+        Unknown = 4
+    };
 }

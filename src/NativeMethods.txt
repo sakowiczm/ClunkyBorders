@@ -27,3 +27,6 @@ BITMAPINFOHEADER
 CreateDIBSection
 SelectObject
 UpdateLayeredWindow
+EVENT_OBJECT_LOCATIONCHANGE
+WINDOWPLACEMENT
+GetWindowPlacement

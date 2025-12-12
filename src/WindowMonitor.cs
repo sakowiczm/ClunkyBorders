@@ -1,6 +1,8 @@
-﻿using Windows.Win32;
+﻿using System.Runtime.InteropServices;
+using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.UI.Accessibility;
+using Windows.Win32.UI.WindowsAndMessaging;
 
 namespace ClunkyBorders
 {
@@ -26,17 +28,17 @@ namespace ClunkyBorders
         {
             if (isStarted)
             {
-                Console.WriteLine("WindowMonitor is already started.");
+                Console.WriteLine("WindowMonitor -> Is already started.");
                 return;
             }
 
-            Console.WriteLine("WindowMonitor is starting...");
+            Console.WriteLine("WindowMonitor -> Starting...");
 
             // todo: what if this one is null?
             // todo: do I need handle somehow on Stop?
             var hookHwnd = PInvoke.SetWinEventHook(
-                PInvoke.EVENT_SYSTEM_FOREGROUND,        // Event Min
-                PInvoke.EVENT_SYSTEM_FOREGROUND,        // Event Max
+                PInvoke.EVENT_SYSTEM_FOREGROUND,
+                PInvoke.EVENT_OBJECT_LOCATIONCHANGE,
                 HMODULE.Null,                           // In process hook
                 OnWindowChange,                         // In process callback function
                 0,                                      // All processes
@@ -54,39 +56,55 @@ namespace ClunkyBorders
             isStarted = true;
         }
 
-        // todo: add try catch
         public void Stop()
         {
             if (!isStarted)
                 return;
 
-            Console.WriteLine("WindowMonitor is stopping...");
+            Console.WriteLine("WindowMonitor -> Stopping...");
 
             isStarted = false;
         }
 
         private void OnWindowChange(
-            HWINEVENTHOOK hWinEventHook, // Handle to the event hook
-            uint @event,                 // Event type   
-            HWND hwnd,                   // Window that triggered the event
-            int idObject, int idChild,   
-            uint idEventThread,          // Thread that triggered the event
-            uint dwmsEventTime)          // Timestamp of the event
+            HWINEVENTHOOK hWinEventHook,
+            uint @event,
+            HWND hwnd,
+            int idObject, int idChild,
+            uint idEventThread,
+            uint dwmsEventTime)
         {
             try
             {
-                // todo: handle resize as well
-                // todo: handle move
-                if (@event != PInvoke.EVENT_SYSTEM_FOREGROUND)
-                    return;
+                switch (@event)
+                {
+                    case PInvoke.EVENT_OBJECT_LOCATIONCHANGE:
+                        {
+                            // Only care about location changes for the active window
+                            var activeHwnd = PInvoke.GetForegroundWindow();
+                            if (hwnd != activeHwnd)
+                                return;
+                        }
+                        break;
+
+                    case PInvoke.EVENT_SYSTEM_FOREGROUND:
+                        break;
+
+                    default:
+                        return;
+                }
 
                 var window = GetWindow(hwnd);
 
-                WindowChanged?.Invoke(this, window);
+                if (window != null)
+                {
+                    WindowChanged?.Invoke(this, window);
+                }
+
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error: {ex}");
+                Console.WriteLine($"WindowMonitor -> Error in OnWindowChange. Exception: {ex}");
             }
         }
 
@@ -94,12 +112,16 @@ namespace ClunkyBorders
         // todo: try catch if something is not right
         private WindowInfo? GetWindow(HWND hwnd)
         {
-            // todoL check if hwnd is null
+            // todo: check if hwnd is null
+
+            // todo: try catch - sometimes we get FAIL 
 
             var windowClassName = GetWindowClassName(hwnd);
 
             if (classNamesToExclude.Contains(windowClassName))
             {
+                Console.WriteLine($"WindowMonitor -> Excluded window detected: {windowClassName}");
+
                 // window is excluded
                 return null;
             }
@@ -107,9 +129,29 @@ namespace ClunkyBorders
             var windowText = GetWindowText(hwnd);
 
             // todo: fail if not received
+            // todo: boundaries for some windows are off why?
             PInvoke.GetWindowRect(hwnd, out var rect);
 
-            return new WindowInfo { Handle = hwnd, ClassName = windowClassName, Text = windowText, Rect = rect };
+            WindowState state = GetWindowState(hwnd);
+
+            return new WindowInfo { Handle = hwnd, ClassName = windowClassName, Text = windowText, Rect = rect, State = state };
+        }
+
+        private static WindowState GetWindowState(HWND hwnd)
+        {
+            var placement = new WINDOWPLACEMENT();
+            placement.length = (uint)Marshal.SizeOf<WINDOWPLACEMENT>();
+
+            PInvoke.GetWindowPlacement(hwnd, ref placement);
+
+            return (uint)placement.showCmd switch
+            {
+                0 => WindowState.Hiden,
+                1 => WindowState.Normal,
+                2 => WindowState.Minimized,
+                3 => WindowState.Maximized,
+                _ => WindowState.Unknown,
+            };
         }
 
         private unsafe string GetWindowClassName(HWND hwnd)
@@ -144,7 +186,7 @@ namespace ClunkyBorders
 
                 if (hwnd.IsNull)
                 {
-                    Console.WriteLine("No active window.");
+                    Console.WriteLine("WindowMonitor -> No active window.");
                     return null;
                 }
 
@@ -153,7 +195,7 @@ namespace ClunkyBorders
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error getting current active window. Error: {ex}");
+                Console.WriteLine($"WindowMonitor -> Error getting current active window. Error: {ex}");
                 return null;
             }
         }
