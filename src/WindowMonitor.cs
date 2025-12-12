@@ -111,7 +111,12 @@ namespace ClunkyBorders
 
                 var window = GetWindow(hwnd);
 
-                if (window != null)
+
+                // todo: right now we have to allow for null otherwise we do not hide border properly
+                //  we could filter in Program class but then we don't want to do more stuff then necessary
+                //  in GetWindow or filter in both places - think on it
+
+                //if (window != null)
                 {
                     WindowChanged?.Invoke(this, window);
                 }
