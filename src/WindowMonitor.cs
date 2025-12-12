@@ -23,6 +23,8 @@ namespace ClunkyBorders
 
         private bool isStarted;
 
+        private HWINEVENTHOOK eventHook;
+
         // todo: add try catch
         public void Start()
         {
@@ -34,9 +36,7 @@ namespace ClunkyBorders
 
             Console.WriteLine("WindowMonitor -> Starting...");
 
-            // todo: what if this one is null?
-            // todo: do I need handle somehow on Stop?
-            var hookHwnd = PInvoke.SetWinEventHook(
+            eventHook = PInvoke.SetWinEventHook(
                 PInvoke.EVENT_SYSTEM_FOREGROUND,
                 PInvoke.EVENT_OBJECT_LOCATIONCHANGE,
                 HMODULE.Null,                           // In process hook
@@ -46,6 +46,13 @@ namespace ClunkyBorders
                 PInvoke.WINEVENT_OUTOFCONTEXT           // In process hook
                 | PInvoke.WINEVENT_SKIPOWNPROCESS
             );
+
+            if(eventHook == IntPtr.Zero)
+            {
+                // todo: GetLastError?
+                Console.WriteLine("WindowMonitor -> Failed to set SetWinEventHook.");
+                return;
+            }
 
             var window = GetCurrentActiveWindow();
             if (window != null)
@@ -61,18 +68,26 @@ namespace ClunkyBorders
             if (!isStarted)
                 return;
 
-            Console.WriteLine("WindowMonitor -> Stopping...");
+            try
+            {
+                if(eventHook != IntPtr.Zero)
+                {
+                    PInvoke.UnhookWinEvent(eventHook);
+                    eventHook = default;
+                }
 
-            isStarted = false;
+                isStarted = false;
+                Console.WriteLine("WindowMonitor -> Stopped.");
+            }
+            catch (Exception ex)
+            {
+
+                Console.WriteLine($"WindowMonitor -> Error stopping. Exception: {ex}");
+            }
         }
 
-        private void OnWindowChange(
-            HWINEVENTHOOK hWinEventHook,
-            uint @event,
-            HWND hwnd,
-            int idObject, int idChild,
-            uint idEventThread,
-            uint dwmsEventTime)
+        private void OnWindowChange(HWINEVENTHOOK hWinEventHook, uint @event, HWND hwnd,
+            int idObject, int idChild, uint idEventThread, uint dwmsEventTime)
         {
             try
             {
