@@ -37,11 +37,8 @@ namespace ClunkyBorders
 
             if (overlayWindow.IsNull)
             {
-                // todo: error
                 return;
             }
-
-            // https://learn.microsoft.com/en-gb/windows/win32/api/winuser/nf-winuser-setwindowpos
 
             PInvoke.SetWindowPos(
                 overlayWindow,
@@ -188,9 +185,6 @@ namespace ClunkyBorders
             {
                 pixels[i] = 0x00000000; // Fully transparent
             }
-
-            // todo: pass configuraiton
-            // todo: maybe rounded corners?
 
             uint borderColor = 0xFFFFA500;
             int w = window.Rect.Width;

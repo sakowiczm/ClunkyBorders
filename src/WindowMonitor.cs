@@ -8,7 +8,6 @@ namespace ClunkyBorders
 {
     internal class WindowMonitor
     {
-        // todo: move to configuration
         HashSet<string> classNamesToExclude = new HashSet<string>()
         {
             "Windows.UI.Core.CoreWindow",               // Windows Start menu
@@ -128,8 +127,6 @@ namespace ClunkyBorders
             }
         }
 
-        // todo: only partent windows - filter dialogs, splash screens etc.
-        // todo: try catch if something is not right
         private WindowInfo? GetWindow(HWND hwnd)
         {
             // todo: check if hwnd is null

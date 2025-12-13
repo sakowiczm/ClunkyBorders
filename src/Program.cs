@@ -2,13 +2,27 @@
 using Windows.Win32;
 using Windows.Win32.Foundation;
 
+
+// NEXT
+// - draw border only for parent windows filter dialogs, splash screens etc.
+// - extract configuration class
+// - AOT 
+// - app should have only one instance
+// - better error handling / logging
+// - log to file
+// - Add rounded corners to the border
+// - Windows Applicaiton - ability to close it 
+// - windowDetector.Stop() - it's not reachable right now
+
+// Issues:
+// - When window is transition between different monitors - border window has odd placement
+// - Border is drawn over window task bar
+
 internal class Program
 {
     private static int Main(string[] args)
     {
         Console.WriteLine($"ClunkyBorder Starting");
-
-        // todo: app should have only one instance
 
         var borderManager = new BorderManager();
         borderManager.Init();
@@ -40,7 +54,6 @@ internal class Program
             PInvoke.DispatchMessage(msg);
         }
 
-        // todo: fix - right now it's not reachable
         windowDetector.Stop();
 
         return 0;
