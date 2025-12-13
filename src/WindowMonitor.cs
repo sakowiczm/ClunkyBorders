@@ -146,12 +146,42 @@ namespace ClunkyBorders
             var windowText = GetWindowText(hwnd);
 
             // todo: fail if not received
-            // todo: boundaries for some windows are off why?
             PInvoke.GetWindowRect(hwnd, out var rect);
 
             WindowState state = GetWindowState(hwnd);
 
-            return new WindowInfo { Handle = hwnd, ClassName = windowClassName, Text = windowText, Rect = rect, State = state };
+            bool isParent = IsParentWindow(hwnd);
+
+            return new WindowInfo { Handle = hwnd, ClassName = windowClassName, Text = windowText, Rect = rect, State = state, IsParent = isParent };
+        }
+
+        private bool IsParentWindow(HWND hwnd)
+        {
+            try
+            {
+                var rootWindow = PInvoke.GetAncestor(hwnd, GET_ANCESTOR_FLAGS.GA_ROOT);
+                if(rootWindow.IsNull) 
+                    return false;
+
+                // if different then selected window is not a parent
+                if (rootWindow != hwnd)
+                    return false;
+
+                var style = PInvoke.GetWindowLong(hwnd, WINDOW_LONG_PTR_INDEX.GWL_STYLE);
+                if ((style & (uint)WINDOW_STYLE.WS_POPUP) != 0 && (style & (uint)WINDOW_STYLE.WS_CAPTION) == 0)
+                    return false;
+
+                var exStyle = PInvoke.GetWindowLong(hwnd, WINDOW_LONG_PTR_INDEX.GWL_EXSTYLE);
+                if ((exStyle & (uint)WINDOW_EX_STYLE.WS_EX_DLGMODALFRAME) != 0)
+                    return false;
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"WindowMonitor -> Error checking window parent. Exception: {ex}");
+                return false;
+            }
         }
 
         private static WindowState GetWindowState(HWND hwnd)

@@ -3,8 +3,9 @@ using Windows.Win32;
 using Windows.Win32.Foundation;
 
 
-// NEXT
+// Todo:
 // - draw border only for parent windows filter dialogs, splash screens etc.
+// - Boundaries for some windows are off why?
 // - extract configuration class
 // - AOT 
 // - app should have only one instance
@@ -13,6 +14,10 @@ using Windows.Win32.Foundation;
 // - Add rounded corners to the border
 // - Windows Applicaiton - ability to close it 
 // - windowDetector.Stop() - it's not reachable right now
+// - XamlExplorerHostIslandWindow - excluded but when ALT+TAB - sometimes it's not getting focus window right
+// - Preformance - multiple mouse clicks on the same window - keep state?
+// - How can handle elevate windows?
+
 
 // Issues:
 // - When window is transition between different monitors - border window has odd placement

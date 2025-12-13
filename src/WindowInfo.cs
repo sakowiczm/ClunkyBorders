@@ -14,13 +14,16 @@ namespace ClunkyBorders
 
         public WindowState State { get; init; }
 
+        public bool IsParent { get; init; }
+
         public override string ToString()
         {
             return $"""
-                    Window: 
+                    {DateTime.UtcNow.ToString("HH:mm:ssfffffffK")} Window: 
                         Class Name: {(string.IsNullOrEmpty(ClassName) ? "FAIL" : ClassName)} 
                         Text: {(string.IsNullOrEmpty(Text) ? "FAIL" : Text)}
                         State: {State.ToString()}
+                        IsParent: {IsParent}
                         HWND: {Handle}
                     """;
         }

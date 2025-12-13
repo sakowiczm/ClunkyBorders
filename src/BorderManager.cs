@@ -33,7 +33,7 @@ namespace ClunkyBorders
 
         public void Show(WindowInfo window)
         {
-            Console.WriteLine($"BorderManager -> Show border: {window.ToString()}");
+            Console.WriteLine($"BorderManager -> Show border:\n\r {window.ToString()}");
 
             if (overlayWindow.IsNull)
             {
