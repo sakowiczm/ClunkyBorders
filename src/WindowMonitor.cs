@@ -8,58 +8,54 @@ namespace ClunkyBorders
 {
     internal class WindowMonitor
     {
-        HashSet<string> classNamesToExclude = new HashSet<string>()
-        {
-            "Windows.UI.Core.CoreWindow",               // Windows Start menu
-            "Shell_TrayWnd",                            // Windows taskbar
-            "TopLevelWindowForOverflowXamlIsland",      // Windows tray show hidden icons
-            "XamlExplorerHostIslandWindow",             // Windows Task Swicher
-            "ForegroundStaging",                        // Windows Task Swicher - temporary window
-            "Progman"                                   // Program Manager - e.g when clicking a desktop
-        };
-
         public event EventHandler<WindowInfo?>? WindowChanged;
 
         private bool isStarted;
 
         private HWINEVENTHOOK eventHook;
 
-        // todo: add try catch
         public void Start()
         {
-            if (isStarted)
+            try
             {
-                Console.WriteLine("WindowMonitor -> Is already started.");
-                return;
+                if (isStarted)
+                {
+                    Console.WriteLine("WindowMonitor -> Is already started.");
+                    return;
+                }
+
+                Console.WriteLine("WindowMonitor -> Starting...");
+
+                eventHook = PInvoke.SetWinEventHook(
+                    PInvoke.EVENT_SYSTEM_FOREGROUND,
+                    PInvoke.EVENT_OBJECT_LOCATIONCHANGE,
+                    HMODULE.Null,                           // In process hook
+                    OnWindowChange,                         // In process callback function
+                    0,                                      // All processes
+                    0,                                      // All threads
+                    PInvoke.WINEVENT_OUTOFCONTEXT           // In process hook
+                    | PInvoke.WINEVENT_SKIPOWNPROCESS
+                );
+
+                if (eventHook == IntPtr.Zero)
+                {
+                    // todo: GetLastError?
+                    Console.WriteLine("WindowMonitor -> Failed to set SetWinEventHook.");
+                    return;
+                }
+
+                var window = GetCurrentActiveWindow();
+                if (window != null)
+                {
+                    WindowChanged?.Invoke(this, window);
+                }
+
+                isStarted = true;
             }
-
-            Console.WriteLine("WindowMonitor -> Starting...");
-
-            eventHook = PInvoke.SetWinEventHook(
-                PInvoke.EVENT_SYSTEM_FOREGROUND,
-                PInvoke.EVENT_OBJECT_LOCATIONCHANGE,
-                HMODULE.Null,                           // In process hook
-                OnWindowChange,                         // In process callback function
-                0,                                      // All processes
-                0,                                      // All threads
-                PInvoke.WINEVENT_OUTOFCONTEXT           // In process hook
-                | PInvoke.WINEVENT_SKIPOWNPROCESS
-            );
-
-            if(eventHook == IntPtr.Zero)
+            catch(Exception ex) 
             {
-                // todo: GetLastError?
-                Console.WriteLine("WindowMonitor -> Failed to set SetWinEventHook.");
-                return;
+                Console.WriteLine($"WindowMonitor -> Error starting. Exception: {ex}");
             }
-
-            var window = GetCurrentActiveWindow();
-            if (window != null)
-            {
-                WindowChanged?.Invoke(this, window);
-            }
-
-            isStarted = true;
         }
 
         public void Stop()
@@ -110,12 +106,7 @@ namespace ClunkyBorders
 
                 var window = GetWindow(hwnd);
 
-
-                // todo: right now we have to allow for null otherwise we do not hide border properly
-                //  we could filter in Program class but then we don't want to do more stuff then necessary
-                //  in GetWindow or filter in both places - think on it
-
-                //if (window != null)
+                if (window != null)
                 {
                     WindowChanged?.Invoke(this, window);
                 }
@@ -129,30 +120,37 @@ namespace ClunkyBorders
 
         private WindowInfo? GetWindow(HWND hwnd)
         {
-            // todo: check if hwnd is null
-
-            // todo: try catch - sometimes we get FAIL 
-
-            var windowClassName = GetWindowClassName(hwnd);
-
-            if (classNamesToExclude.Contains(windowClassName))
+            try
             {
-                Console.WriteLine($"WindowMonitor -> Excluded window detected: {windowClassName}");
+                var className = GetWindowClassName(hwnd);
+                var text = GetWindowText(hwnd);
 
-                // window is excluded
+                var result = PInvoke.GetWindowRect(hwnd, out var rect);
+
+                if (result == 0)
+                {
+                    Console.WriteLine($"WindowMonitor -> Error getting window rect.");
+                    return null;
+                }
+
+                var state = GetWindowState(hwnd);
+                var isParent = IsParentWindow(hwnd);
+
+                return new WindowInfo 
+                { 
+                    Handle = hwnd, 
+                    ClassName = className, 
+                    Text = text, 
+                    Rect = rect, 
+                    State = state, 
+                    IsParent = isParent 
+                };
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"WindowMonitor -> Error getting window {hwnd} information. Exception: {ex}");
                 return null;
             }
-
-            var windowText = GetWindowText(hwnd);
-
-            // todo: fail if not received
-            PInvoke.GetWindowRect(hwnd, out var rect);
-
-            WindowState state = GetWindowState(hwnd);
-
-            bool isParent = IsParentWindow(hwnd);
-
-            return new WindowInfo { Handle = hwnd, ClassName = windowClassName, Text = windowText, Rect = rect, State = state, IsParent = isParent };
         }
 
         private bool IsParentWindow(HWND hwnd)
@@ -189,7 +187,13 @@ namespace ClunkyBorders
             var placement = new WINDOWPLACEMENT();
             placement.length = (uint)Marshal.SizeOf<WINDOWPLACEMENT>();
 
-            PInvoke.GetWindowPlacement(hwnd, ref placement);
+            var result = PInvoke.GetWindowPlacement(hwnd, ref placement);
+
+            if (result == 0)
+            {
+                Console.WriteLine($"WindowMonitor -> Error getting window state.");
+                return WindowState.Unknown;
+            }
 
             return (uint)placement.showCmd switch
             {

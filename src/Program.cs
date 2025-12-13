@@ -2,29 +2,37 @@
 using Windows.Win32;
 using Windows.Win32.Foundation;
 
-
 // Todo:
-// - draw border only for parent windows filter dialogs, splash screens etc.
 // - Boundaries for some windows are off why?
-// - extract configuration class
+// - Extract configuration class
 // - AOT 
-// - app should have only one instance
-// - better error handling / logging
-// - log to file
+// - App should have only one instance
+// - Better error handling / logging
+// - Log to file
 // - Add rounded corners to the border
 // - Windows Applicaiton - ability to close it 
-// - windowDetector.Stop() - it's not reachable right now
-// - XamlExplorerHostIslandWindow - excluded but when ALT+TAB - sometimes it's not getting focus window right
+// - WindowDetector.Stop() - it's not reachable right now
 // - Preformance - multiple mouse clicks on the same window - keep state?
+// - Performance - when window class is excluded - we don't need other calls
 // - How can handle elevate windows?
-
-
-// Issues:
+// - Exclude pintscreen app
+//      Class Name: XamlWindow
+//      Text: Snipping Tool Overlay
 // - When window is transition between different monitors - border window has odd placement
 // - Border is drawn over window task bar
 
 internal class Program
 {
+    static HashSet<string> classNamesToExclude = new HashSet<string>()
+        {
+            "Windows.UI.Core.CoreWindow",               // Windows Start menu
+            "Shell_TrayWnd",                            // Windows taskbar
+            "TopLevelWindowForOverflowXamlIsland",      // Windows tray show hidden icons
+            "XamlExplorerHostIslandWindow",             // Windows Task Swicher
+            "ForegroundStaging",                        // Windows Task Swicher - temporary window
+            "Progman"                                   // Program Manager - e.g when clicking a desktop
+        };
+
     private static int Main(string[] args)
     {
         Console.WriteLine($"ClunkyBorder Starting");
@@ -37,10 +45,23 @@ internal class Program
         {
             try
             {
-                if (windowInfo != null && windowInfo.State == WindowState.Normal)
+                if(windowInfo != null && classNamesToExclude.Contains(windowInfo.ClassName))
+                {
+                    Console.WriteLine($"Main -> Excluding window. {windowInfo}");
+                    return;
+                }
+
+
+                if (windowInfo != null && windowInfo.CanHaveBorder())
+                {
                     borderManager.Show(windowInfo);
+                }
                 else
+                {
+                    Console.WriteLine($"Main -> Hidding border {windowInfo}");
+
                     borderManager.Hide();
+                }
             }
             catch
             {

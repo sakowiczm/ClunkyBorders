@@ -16,6 +16,12 @@ namespace ClunkyBorders
 
         public bool IsParent { get; init; }
 
+        public bool CanHaveBorder()
+        {
+            // todo: check RECT
+            return State == WindowState.Normal && IsParent;
+        }
+
         public override string ToString()
         {
             return $"""
