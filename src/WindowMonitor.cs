@@ -1,6 +1,7 @@
 ﻿using System.Runtime.InteropServices;
 using Windows.Win32;
 using Windows.Win32.Foundation;
+using Windows.Win32.Graphics.Dwm;
 using Windows.Win32.UI.Accessibility;
 using Windows.Win32.UI.WindowsAndMessaging;
 
@@ -124,15 +125,7 @@ namespace ClunkyBorders
             {
                 var className = GetWindowClassName(hwnd);
                 var text = GetWindowText(hwnd);
-
-                var result = PInvoke.GetWindowRect(hwnd, out var rect);
-
-                if (result == 0)
-                {
-                    Console.WriteLine($"WindowMonitor -> Error getting window rect.");
-                    return null;
-                }
-
+                var rect = GetWindowArea(hwnd);
                 var state = GetWindowState(hwnd);
                 var isParent = IsParentWindow(hwnd);
 
@@ -150,6 +143,42 @@ namespace ClunkyBorders
             {
                 Console.WriteLine($"WindowMonitor -> Error getting window {hwnd} information. Exception: {ex}");
                 return null;
+            }
+        }
+
+        private unsafe RECT GetWindowArea(HWND hwnd)
+        {
+            try
+            {
+                RECT rect;
+
+                var hResult = PInvoke.DwmGetWindowAttribute(
+                    hwnd,
+                    DWMWINDOWATTRIBUTE.DWMWA_EXTENDED_FRAME_BOUNDS,
+                    &rect,    
+                    (uint)sizeof(RECT)
+                );
+
+                if (hResult.Succeeded)
+                    return rect;
+
+                Console.WriteLine("WindowMonitor -> Error getting extended window area.");
+
+                // fallback
+                var result = PInvoke.GetWindowRect(hwnd, out rect);
+
+                if (result == 0)
+                {
+                    Console.WriteLine($"WindowMonitor -> Error getting window rect.");
+                    return default;
+                }
+
+                return rect;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"WindowMonitor -> Error getting window rect. Exception: {ex}");
+                return default;
             }
         }
 

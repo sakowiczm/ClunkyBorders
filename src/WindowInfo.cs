@@ -25,12 +25,12 @@ namespace ClunkyBorders
         public override string ToString()
         {
             return $"""
-                    {DateTime.UtcNow.ToString("HH:mm:ssfffffffK")} Window: 
+                    {DateTime.UtcNow.ToString("HH:mm:ssfffffffK")} Window ({Handle}): 
                         Class Name: {(string.IsNullOrEmpty(ClassName) ? "FAIL" : ClassName)} 
                         Text: {(string.IsNullOrEmpty(Text) ? "FAIL" : Text)}
                         State: {State.ToString()}
                         IsParent: {IsParent}
-                        HWND: {Handle}
+                        Rect: {Rect.left}, {Rect.top}, {Rect.right}, {Rect.bottom}
                     """;
         }
     }

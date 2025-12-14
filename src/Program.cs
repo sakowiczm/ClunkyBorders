@@ -3,7 +3,7 @@ using Windows.Win32;
 using Windows.Win32.Foundation;
 
 // Todo:
-// - Boundaries for some windows are off why?
+// - Border size is off when moved to different monitor
 // - Extract configuration class
 // - AOT 
 // - App should have only one instance
@@ -30,7 +30,8 @@ internal class Program
             "TopLevelWindowForOverflowXamlIsland",      // Windows tray show hidden icons
             "XamlExplorerHostIslandWindow",             // Windows Task Swicher
             "ForegroundStaging",                        // Windows Task Swicher - temporary window
-            "Progman"                                   // Program Manager - e.g when clicking a desktop
+            "Progman",                                  // Program Manager - e.g when clicking a desktop
+            "WorkerW"                                   // Windows Desktop
         };
 
     private static int Main(string[] args)
