@@ -178,6 +178,10 @@ namespace ClunkyBorders
             }
         }
 
+        private const int DEFAULT_SCREEN_DPI = 96; // 100%
+
+        private static float GetScaleFactor(uint dpi) => dpi == 0 ? 1 : (float)dpi / DEFAULT_SCREEN_DPI;
+
         private static unsafe void SetPixels(WindowInfo window, uint* pixels)
         {
             var pixelCount = window.Rect.Width * window.Rect.Height;
@@ -189,7 +193,9 @@ namespace ClunkyBorders
             uint borderColor = 0xFFFFA500;
             int w = window.Rect.Width;
             int h = window.Rect.Height;
-            int border = 4;
+
+            // scale border to current screen DPI
+            int border = (int)(4 * GetScaleFactor(window.DPI));
 
             // Top border
             for (int y = 0; y < border; y++)

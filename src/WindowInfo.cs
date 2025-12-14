@@ -16,6 +16,8 @@ namespace ClunkyBorders
 
         public bool IsParent { get; init; }
 
+        public uint DPI { get; init; }
+
         public bool CanHaveBorder()
         {
             // todo: check RECT
@@ -30,6 +32,7 @@ namespace ClunkyBorders
                         Text: {(string.IsNullOrEmpty(Text) ? "FAIL" : Text)}
                         State: {State.ToString()}
                         IsParent: {IsParent}
+                        DPI: {DPI}
                         Rect: {Rect.left}, {Rect.top}, {Rect.right}, {Rect.bottom}
                     """;
         }

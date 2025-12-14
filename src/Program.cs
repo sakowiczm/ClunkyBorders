@@ -1,11 +1,11 @@
 ﻿using ClunkyBorders;
 using Windows.Win32;
 using Windows.Win32.Foundation;
+using Windows.Win32.UI.HiDpi;
 
 // Todo:
-// - Border size is off when moved to different monitor
-// - Extract configuration class
 // - AOT 
+// - Extract configuration class
 // - App should have only one instance
 // - Better error handling / logging
 // - Log to file
@@ -37,6 +37,8 @@ internal class Program
     private static int Main(string[] args)
     {
         Console.WriteLine($"ClunkyBorder Starting");
+
+        EnableDPIAwarness();
 
         var borderManager = new BorderManager();
         borderManager.Init();
@@ -84,6 +86,20 @@ internal class Program
         windowDetector.Stop();
 
         return 0;
+    }
+
+    private unsafe static void EnableDPIAwarness()
+    {
+        try
+        {
+            PInvoke.SetProcessDpiAwarenessContext((DPI_AWARENESS_CONTEXT)(-4));
+            Console.WriteLine("Main -> DPI awarness enabled.");
+        }
+        catch (Exception ex)
+        {
+
+            Console.WriteLine($"Main -> Error enabling DPI awarness. Exception: {ex}");
+        }
     }
 
 }

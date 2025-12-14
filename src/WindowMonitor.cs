@@ -128,15 +128,17 @@ namespace ClunkyBorders
                 var rect = GetWindowArea(hwnd);
                 var state = GetWindowState(hwnd);
                 var isParent = IsParentWindow(hwnd);
+                uint dpi = PInvoke.GetDpiForWindow(hwnd);
 
-                return new WindowInfo 
-                { 
-                    Handle = hwnd, 
-                    ClassName = className, 
-                    Text = text, 
-                    Rect = rect, 
-                    State = state, 
-                    IsParent = isParent 
+                return new WindowInfo
+                {
+                    Handle = hwnd,
+                    ClassName = className,
+                    Text = text,
+                    Rect = rect,
+                    State = state,
+                    IsParent = isParent,
+                    DPI = dpi
                 };
             }
             catch (Exception ex)
