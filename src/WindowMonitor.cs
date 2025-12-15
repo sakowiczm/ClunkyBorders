@@ -12,8 +12,13 @@ namespace ClunkyBorders
         public event EventHandler<WindowInfo?>? WindowChanged;
 
         private bool isStarted;
-
         private HWINEVENTHOOK eventHook;
+        private readonly Logger logger;
+
+        public WindowMonitor(Logger logger)
+        {
+            this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        }
 
         public void Start()
         {
@@ -21,11 +26,11 @@ namespace ClunkyBorders
             {
                 if (isStarted)
                 {
-                    Console.WriteLine("WindowMonitor -> Is already started.");
+                    logger.Debug("WindowMonitor. Already started.");
                     return;
                 }
 
-                Console.WriteLine("WindowMonitor -> Starting...");
+                logger.Debug("WindowMonitor. Starting.");
 
                 eventHook = PInvoke.SetWinEventHook(
                     PInvoke.EVENT_SYSTEM_FOREGROUND,
@@ -40,8 +45,7 @@ namespace ClunkyBorders
 
                 if (eventHook == IntPtr.Zero)
                 {
-                    // todo: GetLastError?
-                    Console.WriteLine("WindowMonitor -> Failed to set SetWinEventHook.");
+                    logger.Error($"WindowMonitor. Failed to set SetWinEventHook. Error code: {Marshal.GetLastWin32Error()}");
                     return;
                 }
 
@@ -55,7 +59,7 @@ namespace ClunkyBorders
             }
             catch(Exception ex) 
             {
-                Console.WriteLine($"WindowMonitor -> Error starting. Exception: {ex}");
+                logger.Error($"WindowMonitor. Error starting.", ex);
             }
         }
 
@@ -73,12 +77,11 @@ namespace ClunkyBorders
                 }
 
                 isStarted = false;
-                Console.WriteLine("WindowMonitor -> Stopped.");
+                logger.Debug("WindowMonitor. Stopped.");
             }
             catch (Exception ex)
             {
-
-                Console.WriteLine($"WindowMonitor -> Error stopping. Exception: {ex}");
+                logger.Error($"WindowMonitor. Error stopping.", ex);
             }
         }
 
@@ -115,7 +118,7 @@ namespace ClunkyBorders
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"WindowMonitor -> Error in OnWindowChange. Exception: {ex}");
+                logger.Error($"WindowMonitor. Error in OnWindowChange.", ex);
             }
         }
 
@@ -143,7 +146,7 @@ namespace ClunkyBorders
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"WindowMonitor -> Error getting window {hwnd} information. Exception: {ex}");
+                logger.Error($"WindowMonitor. Error getting window {hwnd} information.", ex);
                 return null;
             }
         }
@@ -164,14 +167,14 @@ namespace ClunkyBorders
                 if (hResult.Succeeded)
                     return rect;
 
-                Console.WriteLine("WindowMonitor -> Error getting extended window area.");
+                logger.Error($"WindowMonitor. Error getting extended window ({hwnd}) rect. Error code: {Marshal.GetLastWin32Error()}.");
 
                 // fallback
                 var result = PInvoke.GetWindowRect(hwnd, out rect);
 
                 if (result == 0)
                 {
-                    Console.WriteLine($"WindowMonitor -> Error getting window rect.");
+                    logger.Error($"WindowMonitor. Error getting window ({hwnd}) rect. Error code: {Marshal.GetLastWin32Error()}.");
                     return default;
                 }
 
@@ -179,7 +182,7 @@ namespace ClunkyBorders
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"WindowMonitor -> Error getting window rect. Exception: {ex}");
+                logger.Error($"WindowMonitor. Error getting window ({hwnd}) rect.", ex);
                 return default;
             }
         }
@@ -208,12 +211,12 @@ namespace ClunkyBorders
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"WindowMonitor -> Error checking window parent. Exception: {ex}");
+                logger.Error($"WindowMonitor. Error checking window parent.", ex);
                 return false;
             }
         }
 
-        private static WindowState GetWindowState(HWND hwnd)
+        private WindowState GetWindowState(HWND hwnd)
         {
             var placement = new WINDOWPLACEMENT();
             placement.length = (uint)Marshal.SizeOf<WINDOWPLACEMENT>();
@@ -222,7 +225,7 @@ namespace ClunkyBorders
 
             if (result == 0)
             {
-                Console.WriteLine($"WindowMonitor -> Error getting window state.");
+                logger.Error($"WindowMonitor. Error getting window state.");
                 return WindowState.Unknown;
             }
 
@@ -268,7 +271,7 @@ namespace ClunkyBorders
 
                 if (hwnd.IsNull)
                 {
-                    Console.WriteLine("WindowMonitor -> No active window.");
+                    logger.Error("WindowMonitor. No active window.");
                     return null;
                 }
 
@@ -277,7 +280,7 @@ namespace ClunkyBorders
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"WindowMonitor -> Error getting current active window. Error: {ex}");
+                logger.Error($"WindowMonitor. Error getting current active window.", ex);
                 return null;
             }
         }

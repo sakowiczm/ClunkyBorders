@@ -1,39 +1,49 @@
-﻿using System.Runtime.InteropServices;
+﻿using ClunkyBorders.Configuration;
+using System.Runtime.InteropServices;
 using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.Graphics.Gdi;
+using Windows.Win32.UI.HiDpi;
 using Windows.Win32.UI.WindowsAndMessaging;
 
 namespace ClunkyBorders
 {
-    internal class BorderManager
+    internal class BorderRenderer
     {
         private const string OverlayWindowClassName = "ClunkyBordersOverlayClass";
         private const string OverlayWindowName = "ClunkyBordersOverlay";
+        private const int DEFAULT_SCREEN_DPI = 96; // 100%       
 
         private HWND overlayWindow;
+        private bool isWindowVisible = false;
 
-        private bool isOverlayWindowVisible = false;
+        private readonly BorderConfiguration borderConfiguration;
+        private readonly Logger logger;
 
-        public unsafe void Init()
+        public unsafe BorderRenderer(BorderConfiguration borderConfig, Logger logger)
         {
             try
             {
+                this.borderConfiguration = borderConfig ?? throw new ArgumentNullException(nameof(borderConfig));
+                this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
+                EnableDpiAwarness();
+
                 var hModule = PInvoke.GetModuleHandle((PCWSTR)null);
                 var hInstance = new HINSTANCE(hModule.Value);
 
                 RegisterWindowClass(hInstance);
                 overlayWindow = CreateWindow(hInstance);
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
-                Console.WriteLine($"BorderManager -> Error initializing overlay window: {ex}");
+                logger.Error($"BorderRenderer. Error initializing overlay window.", ex);
             }
         }
 
         public void Show(WindowInfo window)
         {
-            Console.WriteLine($"BorderManager -> Show border:\n\r {window.ToString()}");
+            logger.Debug($"BorderRenderer. Show border:\n\r {window.ToString()}");
 
             if (overlayWindow.IsNull)
             {
@@ -46,41 +56,38 @@ namespace ClunkyBorders
                 window.Rect.X, window.Rect.Y, window.Rect.Width, window.Rect.Height,
                 SET_WINDOW_POS_FLAGS.SWP_NOACTIVATE | SET_WINDOW_POS_FLAGS.SWP_SHOWWINDOW);
 
-            RenderBorder(window);
+            DrawBorder(window);
 
-            if (!isOverlayWindowVisible)
+            if (!isWindowVisible)
             {
                 PInvoke.ShowWindow(overlayWindow, SHOW_WINDOW_CMD.SW_SHOWNOACTIVATE);
-                isOverlayWindowVisible = true;
+                isWindowVisible = true;
 
-                Console.WriteLine($"BorderManager -> Border is shown. Size: {window.Rect.X}, {window.Rect.Y}, {window.Rect.Width}, {window.Rect.Height}");
+                logger.Debug($"BorderRenderer. Border is shown. Size: {window.Rect.X}, {window.Rect.Y}, {window.Rect.Width}, {window.Rect.Height}");
             }
         }
 
         public void Hide() 
         { 
-            if(!isOverlayWindowVisible || overlayWindow.IsNull)
+            if(!isWindowVisible || overlayWindow.IsNull)
             {
-                Console.WriteLine("BorderManager -> Cant hide border as it is not visible.");
+                logger.Warning("BorderRenderer. Cant hide border as it is not visible.");
             }
 
             try
             {
                 PInvoke.ShowWindow(overlayWindow, SHOW_WINDOW_CMD.SW_HIDE);
-                isOverlayWindowVisible = false;
+                isWindowVisible = false;
 
-
-                Console.WriteLine("BorderManager -> Border is hidden.");
+                logger.Debug("BorderRenderer. Border is hidden.");
             }
             catch (Exception ex)
             {
-
-                Console.WriteLine($"BorderManager -> Error hidding border. Exception: {ex}.");
+                logger.Error($"BorderRenderer. Error hidding border.", ex);
             }
-
         }
 
-        private unsafe void RenderBorder(WindowInfo window)
+        private unsafe void DrawBorder(WindowInfo window)
         {
             try
             {
@@ -88,7 +95,7 @@ namespace ClunkyBorders
                 var screenDc = PInvoke.GetDC(HWND.Null);
                 if (screenDc == default)
                 {
-                    Console.WriteLine("BorderManager -> Failed to get screen DC.");
+                    logger.Error($"BorderRenderer. Failed to get screen DC. Error code: {Marshal.GetLastWin32Error()}");
                 }
 
                 try
@@ -96,7 +103,7 @@ namespace ClunkyBorders
                     var memoryDc = PInvoke.CreateCompatibleDC(screenDc);
                     if (memoryDc == default)
                     {
-                        Console.WriteLine("BorderManager -> Failed to create compatible DC.");
+                        logger.Error($"BorderRenderer. Failed to create compatible DC. Error code: {Marshal.GetLastWin32Error()}");
                         return;
                     }
 
@@ -126,7 +133,7 @@ namespace ClunkyBorders
                         var hBitmap = PInvoke.CreateDIBSection(memoryDc, &bmi, 0, &pBits, HANDLE.Null, 0);
                         if (hBitmap.IsNull)
                         {
-                            Console.WriteLine("BorderManager -> Failed to create DIB section.");
+                            logger.Error($"BorderRenderer. Failed to create DIB section. Error code: {Marshal.GetLastWin32Error()}");
                             return;
                         }
 
@@ -149,10 +156,9 @@ namespace ClunkyBorders
                             if (!PInvoke.UpdateLayeredWindow(overlayWindow, default, null, &size, memoryDc,
                                 &winPtSrc, new COLORREF(0), &blend, UPDATE_LAYERED_WINDOW_FLAGS.ULW_ALPHA))
                             {
-                                Console.WriteLine($"BorderManager -> UpdateLayeredWindow failed. Error: {Marshal.GetLastWin32Error()}");
+                                logger.Error($"BorderRenderer. UpdateLayeredWindow failed. Error code: {Marshal.GetLastWin32Error()}");
                             }
 
-                            // clean up
                             PInvoke.SelectObject(memoryDc, oldBitmap);
 
                         }
@@ -174,15 +180,13 @@ namespace ClunkyBorders
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"BorderManager -> Error during RenderBorder, Exception: {ex}");
+                logger.Error($"BorderRenderer. Error during RenderBorder.", ex);
             }
         }
 
-        private const int DEFAULT_SCREEN_DPI = 96; // 100%
-
         private static float GetScaleFactor(uint dpi) => dpi == 0 ? 1 : (float)dpi / DEFAULT_SCREEN_DPI;
 
-        private static unsafe void SetPixels(WindowInfo window, uint* pixels)
+        private unsafe void SetPixels(WindowInfo window, uint* pixels)
         {
             var pixelCount = window.Rect.Width * window.Rect.Height;
             for (int i = 0; i < pixelCount; i++)
@@ -190,12 +194,12 @@ namespace ClunkyBorders
                 pixels[i] = 0x00000000; // Fully transparent
             }
 
-            uint borderColor = 0xFFFFA500;
+            uint borderColor = borderConfiguration.Color;
             int w = window.Rect.Width;
             int h = window.Rect.Height;
 
             // scale border to current screen DPI
-            int border = (int)(4 * GetScaleFactor(window.DPI));
+            int border = (int)(borderConfiguration.Thickness * GetScaleFactor(window.DPI));
 
             // Top border
             for (int y = 0; y < border; y++)
@@ -218,11 +222,29 @@ namespace ClunkyBorders
                     pixels[y * w + x] = borderColor;
         }
 
+        private unsafe void EnableDpiAwarness()
+        {
+            try
+            {
+                var result = PInvoke.SetProcessDpiAwarenessContext((DPI_AWARENESS_CONTEXT)(-4));
+
+                if(result == false)
+                    logger.Error($"BorderRenderer. Error setting DPI awarness. Error Code: {Marshal.GetLastWin32Error()}");
+                else
+                    logger.Info($"BorderRenderer. DPI awarness enabled");
+            }
+            catch (Exception ex)
+            {
+
+                logger.Error($"BorderRenderer. Error enabling DPI awarness", ex);
+            }
+        }
+
         private unsafe void RegisterWindowClass(HINSTANCE hInstance)
         {
             fixed (char* className = OverlayWindowClassName)
             {
-                PInvoke.RegisterClassEx(new WNDCLASSEXW
+                var result = PInvoke.RegisterClassEx(new WNDCLASSEXW
                 {
                     cbSize = (uint)Marshal.SizeOf<WNDCLASSEXW>(),
                     style = 0,
@@ -238,7 +260,10 @@ namespace ClunkyBorders
                     hIconSm = HICON.Null
                 });
 
-                // todo: GetLastError
+                if (result == IntPtr.Zero)
+                {
+                    logger.Error($"BorderRenderer. Error registering window class. Error code: {Marshal.GetLastWin32Error()}");
+                }
             }
         }
 
@@ -264,7 +289,10 @@ namespace ClunkyBorders
                     hInstance,
                     null);
 
-                // todo: GetLastError
+                if (wHwnd.IsNull)
+                {
+                    logger.Error($"BorderRenderer. Error creating window. Error code: {Marshal.GetLastWin32Error()}");
+                }
             }
 
             return wHwnd;

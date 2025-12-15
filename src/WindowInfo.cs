@@ -10,7 +10,7 @@ namespace ClunkyBorders
 
         public required string Text { get; init; }
 
-        public required RECT Rect { get; init; }
+        public RECT Rect { get; init; }
 
         public WindowState State { get; init; }
 
@@ -27,7 +27,7 @@ namespace ClunkyBorders
         public override string ToString()
         {
             return $"""
-                    {DateTime.UtcNow.ToString("HH:mm:ssfffffffK")} Window ({Handle}): 
+                    Window ({Handle}): 
                         Class Name: {(string.IsNullOrEmpty(ClassName) ? "FAIL" : ClassName)} 
                         Text: {(string.IsNullOrEmpty(Text) ? "FAIL" : Text)}
                         State: {State.ToString()}
