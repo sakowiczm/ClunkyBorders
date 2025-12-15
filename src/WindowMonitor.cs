@@ -108,6 +108,9 @@ namespace ClunkyBorders
                         return;
                 }
 
+                if (hwnd.IsNull)
+                    return;
+
                 var window = GetWindow(hwnd);
 
                 if (window != null)
@@ -287,3 +290,4 @@ namespace ClunkyBorders
 
     }
 }
+

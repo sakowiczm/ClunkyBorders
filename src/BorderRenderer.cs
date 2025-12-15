@@ -2,6 +2,7 @@
 using System.Runtime.InteropServices;
 using Windows.Win32;
 using Windows.Win32.Foundation;
+using Windows.Win32.Graphics.Dwm;
 using Windows.Win32.Graphics.Gdi;
 using Windows.Win32.UI.HiDpi;
 using Windows.Win32.UI.WindowsAndMessaging;
@@ -17,8 +18,8 @@ namespace ClunkyBorders
         private HWND overlayWindow;
         private bool isWindowVisible = false;
 
-        private readonly BorderConfiguration borderConfiguration;
-        private readonly Logger logger;
+        private readonly BorderConfiguration borderConfiguration = null!;
+        private readonly Logger logger = null!;
 
         public unsafe BorderRenderer(BorderConfiguration borderConfig, Logger logger)
         {

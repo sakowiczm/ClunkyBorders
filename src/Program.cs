@@ -4,7 +4,7 @@ using Windows.Win32;
 using Windows.Win32.Foundation;
 
 // Todo:
-// - AOT 
+// - AOT - use dotnet publish ~1.5MB
 // - App should have only one instance
 // - Log to file
 // - Add rounded corners to the border
@@ -18,6 +18,7 @@ using Windows.Win32.Foundation;
 //      Class Name: XamlWindow
 //      Text: Snipping Tool Overlay
 // - Border is drawn over window task bar
+// - Investigate other events - screenshot
 
 internal class Program
 {

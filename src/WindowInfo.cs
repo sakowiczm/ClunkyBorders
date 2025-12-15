@@ -20,8 +20,7 @@ namespace ClunkyBorders
 
         public bool CanHaveBorder()
         {
-            // todo: check RECT
-            return State == WindowState.Normal && IsParent;
+            return State == WindowState.Normal && IsParent && !Rect.IsEmpty;
         }
 
         public override string ToString()
