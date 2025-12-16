@@ -51,13 +51,13 @@ namespace ClunkyBorders
                 return;
             }
 
+            DrawBorder(window);
+
             PInvoke.SetWindowPos(
                 overlayWindow,
-                new HWND(-1), // HWND_TOPMOST
+                HWND.HWND_TOPMOST,
                 window.Rect.X, window.Rect.Y, window.Rect.Width, window.Rect.Height,
                 SET_WINDOW_POS_FLAGS.SWP_NOACTIVATE | SET_WINDOW_POS_FLAGS.SWP_SHOWWINDOW);
-
-            DrawBorder(window);
 
             if (!isWindowVisible)
             {
