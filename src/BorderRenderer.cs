@@ -2,17 +2,16 @@
 using System.Runtime.InteropServices;
 using Windows.Win32;
 using Windows.Win32.Foundation;
-using Windows.Win32.Graphics.Dwm;
 using Windows.Win32.Graphics.Gdi;
 using Windows.Win32.UI.HiDpi;
 using Windows.Win32.UI.WindowsAndMessaging;
 
 namespace ClunkyBorders
 {
-    internal class BorderRenderer
+    internal class BorderRenderer : IDisposable
     {
         private const string OverlayWindowClassName = "ClunkyBordersOverlayClass";
-        private const string OverlayWindowName = "ClunkyBordersOverlay";
+        private const string OverlayWindowName = "ClunkyBordersOverlayWindow";
         private const int DEFAULT_SCREEN_DPI = 96; // 100%       
 
         private HWND overlayWindow;
@@ -20,6 +19,8 @@ namespace ClunkyBorders
 
         private readonly BorderConfiguration borderConfiguration = null!;
         private readonly Logger logger = null!;
+
+        private bool disposed = false;
 
         public unsafe BorderRenderer(BorderConfiguration borderConfig, Logger logger)
         {
@@ -30,11 +31,7 @@ namespace ClunkyBorders
 
                 EnableDpiAwarness();
 
-                var hModule = PInvoke.GetModuleHandle((PCWSTR)null);
-                var hInstance = new HINSTANCE(hModule.Value);
-
-                RegisterWindowClass(hInstance);
-                overlayWindow = CreateWindow(hInstance);
+                overlayWindow = CreateWindow();
             }
             catch (Exception ex)
             {
@@ -44,7 +41,7 @@ namespace ClunkyBorders
 
         public void Show(WindowInfo window)
         {
-            logger.Debug($"BorderRenderer. Show border:\n\r {window.ToString()}");
+            logger.Info($"BorderRenderer. Show border:\n\r {window.ToString()}");
 
             if (overlayWindow.IsNull)
             {
@@ -241,11 +238,17 @@ namespace ClunkyBorders
             }
         }
 
-        private unsafe void RegisterWindowClass(HINSTANCE hInstance)
+        private unsafe HWND CreateWindow()
         {
-            fixed (char* className = OverlayWindowClassName)
+            HWND wHwnd;
+
+            var hModule = PInvoke.GetModuleHandle((PCWSTR)null);
+            var hInstance = new HINSTANCE(hModule.Value);
+
+            fixed (char* pClassName = OverlayWindowClassName)
+            fixed (char* pWindowName = OverlayWindowName)
             {
-                var result = PInvoke.RegisterClassEx(new WNDCLASSEXW
+                var atom = PInvoke.RegisterClassEx(new WNDCLASSEXW
                 {
                     cbSize = (uint)Marshal.SizeOf<WNDCLASSEXW>(),
                     style = 0,
@@ -257,24 +260,16 @@ namespace ClunkyBorders
                     hCursor = HCURSOR.Null,
                     hbrBackground = new HBRUSH(5),
                     lpszMenuName = null,
-                    lpszClassName = className,
+                    lpszClassName = pClassName,
                     hIconSm = HICON.Null
                 });
 
-                if (result == IntPtr.Zero)
+                if (atom == IntPtr.Zero)
                 {
                     logger.Error($"BorderRenderer. Error registering window class. Error code: {Marshal.GetLastWin32Error()}");
+                    return default;
                 }
-            }
-        }
 
-        private unsafe HWND CreateWindow(HINSTANCE hInstance)
-        {
-            HWND wHwnd;
-
-            fixed (char* pClassName = OverlayWindowClassName)
-            fixed (char* pWindowName = OverlayWindowName)
-            {
                 wHwnd = PInvoke.CreateWindowEx(
                     WINDOW_EX_STYLE.WS_EX_TRANSPARENT |     // Mouse pass through below window
                     WINDOW_EX_STYLE.WS_EX_TOPMOST     |     // Always on top
@@ -293,10 +288,37 @@ namespace ClunkyBorders
                 if (wHwnd.IsNull)
                 {
                     logger.Error($"BorderRenderer. Error creating window. Error code: {Marshal.GetLastWin32Error()}");
+                    return default;
                 }
             }
 
             return wHwnd;
+        }
+
+        private void Destroy()
+        {
+            // todo: DestroyWindow
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposed)
+                return;
+
+            Destroy();
+
+            disposed = true;
+        }
+
+        ~BorderRenderer()
+        {
+            Dispose(false);
         }
 
     }

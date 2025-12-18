@@ -36,7 +36,7 @@ namespace ClunkyBorders
                     """;
         }
     }
-
+    
     enum WindowState
     {
         Hiden = 0,

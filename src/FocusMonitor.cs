@@ -7,7 +7,7 @@ using Windows.Win32.UI.WindowsAndMessaging;
 
 namespace ClunkyBorders
 {
-    internal class WindowMonitor
+    internal class FocusMonitor : IDisposable
     {
         public event EventHandler<WindowInfo?>? WindowChanged;
 
@@ -15,7 +15,9 @@ namespace ClunkyBorders
         private HWINEVENTHOOK eventHook;
         private readonly Logger logger;
 
-        public WindowMonitor(Logger logger)
+        private bool disposed = false;
+
+        public FocusMonitor(Logger logger)
         {
             this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
@@ -26,11 +28,11 @@ namespace ClunkyBorders
             {
                 if (isStarted)
                 {
-                    logger.Debug("WindowMonitor. Already started.");
+                    logger.Debug("FocusMonitor. Already started.");
                     return;
                 }
 
-                logger.Debug("WindowMonitor. Starting.");
+                logger.Debug("FocusMonitor. Starting.");
 
                 eventHook = PInvoke.SetWinEventHook(
                     PInvoke.EVENT_SYSTEM_FOREGROUND,
@@ -45,7 +47,7 @@ namespace ClunkyBorders
 
                 if (eventHook == IntPtr.Zero)
                 {
-                    logger.Error($"WindowMonitor. Failed to set SetWinEventHook. Error code: {Marshal.GetLastWin32Error()}");
+                    logger.Error($"FocusMonitor. Failed to set SetWinEventHook. Error code: {Marshal.GetLastWin32Error()}");
                     return;
                 }
 
@@ -59,7 +61,7 @@ namespace ClunkyBorders
             }
             catch(Exception ex) 
             {
-                logger.Error($"WindowMonitor. Error starting.", ex);
+                logger.Error($"FocusMonitor. Error starting.", ex);
             }
         }
 
@@ -77,11 +79,11 @@ namespace ClunkyBorders
                 }
 
                 isStarted = false;
-                logger.Debug("WindowMonitor. Stopped.");
+                logger.Debug("FocusMonitor. Stopped.");
             }
             catch (Exception ex)
             {
-                logger.Error($"WindowMonitor. Error stopping.", ex);
+                logger.Error($"FocusMonitor. Error stopping.", ex);
             }
         }
 
@@ -121,7 +123,7 @@ namespace ClunkyBorders
             }
             catch (Exception ex)
             {
-                logger.Error($"WindowMonitor. Error in OnWindowChange.", ex);
+                logger.Error($"FocusMonitor. Error in OnWindowChange.", ex);
             }
         }
 
@@ -149,7 +151,7 @@ namespace ClunkyBorders
             }
             catch (Exception ex)
             {
-                logger.Error($"WindowMonitor. Error getting window {hwnd} information.", ex);
+                logger.Error($"FocusMonitor. Error getting window {hwnd} information.", ex);
                 return null;
             }
         }
@@ -170,14 +172,14 @@ namespace ClunkyBorders
                 if (hResult.Succeeded)
                     return rect;
 
-                logger.Error($"WindowMonitor. Error getting extended window ({hwnd}) rect. Error code: {Marshal.GetLastWin32Error()}.");
+                logger.Error($"FocusMonitor. Error getting extended window ({hwnd}) rect. Error code: {Marshal.GetLastWin32Error()}.");
 
                 // fallback
                 var result = PInvoke.GetWindowRect(hwnd, out rect);
 
                 if (result == 0)
                 {
-                    logger.Error($"WindowMonitor. Error getting window ({hwnd}) rect. Error code: {Marshal.GetLastWin32Error()}.");
+                    logger.Error($"FocusMonitor. Error getting window ({hwnd}) rect. Error code: {Marshal.GetLastWin32Error()}.");
                     return default;
                 }
 
@@ -185,7 +187,7 @@ namespace ClunkyBorders
             }
             catch (Exception ex)
             {
-                logger.Error($"WindowMonitor. Error getting window ({hwnd}) rect.", ex);
+                logger.Error($"FocusMonitor. Error getting window ({hwnd}) rect.", ex);
                 return default;
             }
         }
@@ -214,7 +216,7 @@ namespace ClunkyBorders
             }
             catch (Exception ex)
             {
-                logger.Error($"WindowMonitor. Error checking window parent.", ex);
+                logger.Error($"FocusMonitor. Error checking window parent.", ex);
                 return false;
             }
         }
@@ -228,7 +230,7 @@ namespace ClunkyBorders
 
             if (result == 0)
             {
-                logger.Error($"WindowMonitor. Error getting window state.");
+                logger.Error($"FocusMonitor. Error getting window state.");
                 return WindowState.Unknown;
             }
 
@@ -274,7 +276,7 @@ namespace ClunkyBorders
 
                 if (hwnd.IsNull)
                 {
-                    logger.Error("WindowMonitor. No active window.");
+                    logger.Error("FocusMonitor. No active window.");
                     return null;
                 }
 
@@ -283,9 +285,31 @@ namespace ClunkyBorders
             }
             catch (Exception ex)
             {
-                logger.Error($"WindowMonitor. Error getting current active window.", ex);
+                logger.Error($"FocusMonitor. Error getting current active window.", ex);
                 return null;
             }
+        }
+
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposed)
+                return;
+
+            Stop();
+
+            disposed = true;
+        }
+
+        ~FocusMonitor()
+        {
+            Dispose(false);
         }
 
     }

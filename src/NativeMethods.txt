@@ -16,6 +16,8 @@ CreateWindowEx
 GetWindowRect
 SetWindowPos
 HWND_TOPMOST
+HWND_TOP
+HWND_MESSAGE
 SET_WINDOW_POS_FLAGS
 ShowWindow
 GetDC
@@ -42,3 +44,15 @@ DPI_AWARENESS_CONTEXT
 DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2
 GetDpiForWindow
 GetDpiForSystem
+WM_RBUTTONUP
+TRACK_POPUP_MENU_FLAGS
+Shell_NotifyIcon
+NOTIFY_ICON_MESSAGE
+CreatePopupMenu
+AppendMenu
+SetForegroundWindow
+GetCursorPos
+TrackPopupMenuEx
+PostQuitMessage
+LoadIcon
+CreateIconFromResourceEx
