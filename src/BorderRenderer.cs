@@ -297,7 +297,11 @@ namespace ClunkyBorders
 
         private void Destroy()
         {
-            // todo: DestroyWindow
+            var success = PInvoke.DestroyWindow(overlayWindow);
+            if (!success)
+            {
+                logger.Error($"BorderRenderer. Error destroying window. Error code: {Marshal.GetLastWin32Error()}");
+            }
         }
 
         public void Dispose()

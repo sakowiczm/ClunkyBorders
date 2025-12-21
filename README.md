@@ -14,3 +14,4 @@ Todo:
 - Border is drawn over window task bar - z-order issue
 - child window issue - clicking pop-up border is hidden from parent window
    what about - get child window parent window HWND and compare with HWND of window currenlty have border - if the same keep border?
+- todo: add About window?   

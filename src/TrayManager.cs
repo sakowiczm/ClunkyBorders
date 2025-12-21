@@ -5,14 +5,16 @@ using Windows.Win32.UI.Shell;
 using Windows.Win32.UI.WindowsAndMessaging;
 
 namespace ClunkyBorders
-{
-    // todo: add logging 
-    // todo: add About window?
-
+{  
     internal class TrayManager : IDisposable
     {
+        private HWND messageWindow;
+
         private const string TrayIconWindowClass = "ClunkyBorderTrayIconWindowClass";
         private const string OverlayWindowName = "ClunkyBorderTrayWindow";
+        private const string ToolTipText = "ClunkyBorders";
+        private const string ExitCommandText = "Exit";
+        private const string IconFileName = "icon.ico";
 
         private const int WM_APP_TRAYICON = 0x8000;
         public const int MENU_EXIT = 1001;
@@ -20,13 +22,25 @@ namespace ClunkyBorders
         private static HMENU hMenu;
         private static NOTIFYICONDATAW notifyIconData;
 
+        private readonly Logger logger = null!;
+        private readonly IconLoader iconLoader = null!;
         private bool disposed = false;
 
-        public TrayManager() 
+        public TrayManager(IconLoader iconLoader, Logger logger)
         {
-            var hwnd = CreateWindow();
-            notifyIconData = CreateTrayIcon(hwnd);
-            CreateMenu();
+            try
+            {
+                this.iconLoader = iconLoader ?? throw new ArgumentNullException(nameof(iconLoader));
+                this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
+                messageWindow = CreateWindow();
+                notifyIconData = CreateTrayIcon(messageWindow, IconFileName);
+                CreateMenu();
+            }
+            catch (Exception ex)
+            {
+                logger.Error($"TrayManager. Error initializing.", ex);
+            }
         }
 
         private unsafe HWND CreateWindow()
@@ -49,7 +63,7 @@ namespace ClunkyBorders
 
                 if (atom == IntPtr.Zero)
                 {
-                    //logger.Error($"TrayManager. Error registering window class. Error code: {Marshal.GetLastWin32Error()}");
+                    logger.Error($"TrayManager. Error registering window class. Error code: {Marshal.GetLastWin32Error()}");
                     return default;
                 }
 
@@ -68,7 +82,7 @@ namespace ClunkyBorders
 
                 if (wHwnd.IsNull)
                 {
-                    //logger.Error($"TrayManager. Error creating window. Error code: {Marshal.GetLastWin32Error()}");
+                    logger.Error($"TrayManager. Error creating window. Error code: {Marshal.GetLastWin32Error()}");
                     return default;
                 }
 
@@ -76,17 +90,17 @@ namespace ClunkyBorders
             }
         }
 
-        private unsafe NOTIFYICONDATAW CreateTrayIcon(HWND hwnd)
+        private unsafe NOTIFYICONDATAW CreateTrayIcon(HWND hwnd, string iconFileName)
         {
             var notifyIconData = new NOTIFYICONDATAW
             {
                 cbSize = (uint)Marshal.SizeOf<NOTIFYICONDATAW>(),
-                hWnd = hwnd, // our window do receive notifications
+                hWnd = hwnd,
                 uID = 1,
                 uFlags = NOTIFY_ICON_DATA_FLAGS.NIF_MESSAGE | NOTIFY_ICON_DATA_FLAGS.NIF_ICON | NOTIFY_ICON_DATA_FLAGS.NIF_TIP,
                 uCallbackMessage = WM_APP_TRAYICON,
-                hIcon = IconLoader.LoadFromResources("icon.ico"),
-                szTip = "ClunkyBorders" // todo: configuration
+                hIcon = iconLoader.LoadFromResources(iconFileName),
+                szTip = ToolTipText
             };
 
             // Add the icon to the system tray
@@ -105,8 +119,7 @@ namespace ClunkyBorders
         {
             hMenu = PInvoke.CreatePopupMenu();
 
-            // todo: configuration
-            fixed (char* pExit = "Exit")
+            fixed (char* pExit = ExitCommandText)
             {
                 PInvoke.AppendMenu(hMenu, MENU_ITEM_FLAGS.MF_STRING, MENU_EXIT, pExit);
             }
@@ -162,7 +175,11 @@ namespace ClunkyBorders
                 hMenu = default;
             }
 
-            // todo: DestroyWindow
+            var success = PInvoke.DestroyWindow(messageWindow);
+            if (!success)
+            {
+                logger.Error($"TrayManager. Error destroying window. Error code: {Marshal.GetLastWin32Error()}");
+            }
         }
 
         public void Dispose()

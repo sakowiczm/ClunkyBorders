@@ -14,8 +14,9 @@ internal class Program
         var windowConfig = new WindowConfiguration();
         var borderConfig = new BorderConfiguration();
 
+        var iconLoader = new IconLoader(logger);
         using var borderRenderer = new BorderRenderer(borderConfig, logger);
-        using var trayManager = new TrayManager();
+        using var trayManager = new TrayManager(iconLoader, logger);
         using var focusMonitor = new FocusMonitor(logger);
 
         focusMonitor.WindowChanged += (sender, windowInfo) =>

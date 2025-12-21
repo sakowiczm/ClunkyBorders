@@ -290,7 +290,6 @@ namespace ClunkyBorders
             }
         }
 
-
         public void Dispose()
         {
             Dispose(true);

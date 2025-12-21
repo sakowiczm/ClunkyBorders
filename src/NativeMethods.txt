@@ -56,3 +56,4 @@ TrackPopupMenuEx
 PostQuitMessage
 LoadIcon
 CreateIconFromResourceEx
+DestroyWindow
