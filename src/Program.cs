@@ -11,6 +11,14 @@ internal class Program
 
         logger.Info($"ClunkyBorder Starting");
 
+        using var instanceManager = new InstanceManager(logger);
+
+        if(!instanceManager.IsSingleInstance())
+        {
+            logger.Warning("Another instance is already running. Exiting.");
+            return 1;
+        }
+
         var windowConfig = new WindowConfiguration();
         var borderConfig = new BorderConfiguration();
 
@@ -48,8 +56,6 @@ internal class Program
         };
 
         focusMonitor.Start();
-
-        logger.Info($"Main. Event loop...");
 
         while (PInvoke.GetMessage(out var msg, HWND.Null, 0, 0))
         {

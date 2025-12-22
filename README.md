@@ -43,7 +43,6 @@ dotnet publish -c Release
 
 ## Todo
 
-- App should have only one instance
 - Log to file
 - Add rounded corners to the border
 - Introduce gap
