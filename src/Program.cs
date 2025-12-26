@@ -7,25 +7,26 @@ internal class Program
 {
     private static int Main(string[] args)
     {
-        var logger = new Logger();
 
-        logger.Info($"ClunkyBorder Starting");
+        Logger.Info($"ClunkyBorder Starting");
+        Logger.Info($"Log file: {Logger.LogFilePath}");
+        Logger.Info($"OS Version: {Environment.OSVersion}");
 
-        using var instanceManager = new InstanceManager(logger);
+        using var instanceManager = new InstanceManager();
 
         if(!instanceManager.IsSingleInstance())
         {
-            logger.Warning("Another instance is already running. Exiting.");
+            Logger.Warning("Another instance is already running. Exiting.");
             return 1;
         }
 
         var windowConfig = new WindowConfiguration();
         var borderConfig = new BorderConfiguration();
 
-        var iconLoader = new IconLoader(logger);
-        using var borderRenderer = new BorderRenderer(borderConfig, logger);
-        using var trayManager = new TrayManager(iconLoader, logger);
-        using var focusMonitor = new FocusMonitor(logger);
+        var iconLoader = new IconLoader();
+        using var borderRenderer = new BorderRenderer(borderConfig);
+        using var trayManager = new TrayManager(iconLoader);
+        using var focusMonitor = new FocusMonitor();
 
         focusMonitor.WindowChanged += (sender, windowInfo) =>
         {
@@ -33,7 +34,7 @@ internal class Program
             {
                 if (windowInfo != null && windowConfig.ExcludedClassNames.Contains(windowInfo.ClassName))
                 {
-                    logger.Debug($"Main. Excluding window. {windowInfo}");
+                    Logger.Debug($"Main. Excluding window. {windowInfo}");
                     return;
                 }
 
@@ -43,14 +44,14 @@ internal class Program
                 }
                 else
                 {
-                    logger.Info($"Main. Hidding border {windowInfo}");
+                    Logger.Info($"Main. Hidding border {windowInfo}");
 
                     borderRenderer.Hide();
                 }
             }
             catch
             {
-                logger.Error($"Main. Error handling WindowChanged event.");
+                Logger.Error($"Main. Error handling WindowChanged event.");
             }
 
         };

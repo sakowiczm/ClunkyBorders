@@ -6,7 +6,7 @@
 
 It’s a lightweight Windows 11 utility that adds a colored border around the currently focused window. This makes it easy to see which window is active, especially when you have several apps open at once.
 
-The application uses native Windows APIs, keeping it small (~2MB) and efficient.
+The application uses native Windows APIs, keeping it small (~3MB) and efficient.
 
 ## Why ClunkyBorders?
 

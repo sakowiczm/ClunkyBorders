@@ -18,16 +18,14 @@ internal class BorderRenderer : IDisposable
     private bool isWindowVisible = false;
 
     private readonly BorderConfiguration borderConfiguration = null!;
-    private readonly Logger logger = null!;
 
     private bool disposed = false;
 
-    public unsafe BorderRenderer(BorderConfiguration borderConfig, Logger logger)
+    public unsafe BorderRenderer(BorderConfiguration borderConfig)
     {
         try
         {
             this.borderConfiguration = borderConfig ?? throw new ArgumentNullException(nameof(borderConfig));
-            this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
             EnableDpiAwarness();
 
@@ -35,13 +33,13 @@ internal class BorderRenderer : IDisposable
         }
         catch (Exception ex)
         {
-            logger.Error($"BorderRenderer. Error initializing overlay window.", ex);
+            Logger.Error("BorderRenderer. Error initializing overlay window.", ex);
         }
     }
 
     public void Show(WindowInfo window)
     {
-        logger.Info($"BorderRenderer. Show border:\n\r {window.ToString()}");
+        Logger.Info($"BorderRenderer. Show border: {window.ToString()}\n\r");
 
         if (overlayWindow.IsNull)
         {
@@ -61,7 +59,7 @@ internal class BorderRenderer : IDisposable
             PInvoke.ShowWindow(overlayWindow, SHOW_WINDOW_CMD.SW_SHOWNOACTIVATE);
             isWindowVisible = true;
 
-            logger.Debug($"BorderRenderer. Border is shown. Size: {window.Rect.X}, {window.Rect.Y}, {window.Rect.Width}, {window.Rect.Height}");
+            Logger.Debug($"BorderRenderer. Border is shown. Size: {window.Rect.X}, {window.Rect.Y}, {window.Rect.Width}, {window.Rect.Height}");
         }
     }
 
@@ -69,7 +67,7 @@ internal class BorderRenderer : IDisposable
     { 
         if(!isWindowVisible || overlayWindow.IsNull)
         {
-            logger.Warning("BorderRenderer. Cant hide border as it is not visible.");
+            Logger.Warning("BorderRenderer. Cant hide border as it is not visible.");
         }
 
         try
@@ -77,11 +75,11 @@ internal class BorderRenderer : IDisposable
             PInvoke.ShowWindow(overlayWindow, SHOW_WINDOW_CMD.SW_HIDE);
             isWindowVisible = false;
 
-            logger.Debug("BorderRenderer. Border is hidden.");
+            Logger.Debug("BorderRenderer. Border is hidden.");
         }
         catch (Exception ex)
         {
-            logger.Error($"BorderRenderer. Error hidding border.", ex);
+            Logger.Error($"BorderRenderer. Error hidding border.", ex);
         }
     }
 
@@ -93,7 +91,7 @@ internal class BorderRenderer : IDisposable
             var screenDc = PInvoke.GetDC(HWND.Null);
             if (screenDc == default)
             {
-                logger.Error($"BorderRenderer. Failed to get screen DC. Error code: {Marshal.GetLastWin32Error()}");
+                Logger.Error($"BorderRenderer. Failed to get screen DC. Error code: {Marshal.GetLastWin32Error()}");
             }
 
             try
@@ -101,7 +99,7 @@ internal class BorderRenderer : IDisposable
                 var memoryDc = PInvoke.CreateCompatibleDC(screenDc);
                 if (memoryDc == default)
                 {
-                    logger.Error($"BorderRenderer. Failed to create compatible DC. Error code: {Marshal.GetLastWin32Error()}");
+                    Logger.Error($"BorderRenderer. Failed to create compatible DC. Error code: {Marshal.GetLastWin32Error()}");
                     return;
                 }
 
@@ -131,7 +129,7 @@ internal class BorderRenderer : IDisposable
                     var hBitmap = PInvoke.CreateDIBSection(memoryDc, &bmi, 0, &pBits, HANDLE.Null, 0);
                     if (hBitmap.IsNull)
                     {
-                        logger.Error($"BorderRenderer. Failed to create DIB section. Error code: {Marshal.GetLastWin32Error()}");
+                        Logger.Error($"BorderRenderer. Failed to create DIB section. Error code: {Marshal.GetLastWin32Error()}");
                         return;
                     }
 
@@ -154,7 +152,7 @@ internal class BorderRenderer : IDisposable
                         if (!PInvoke.UpdateLayeredWindow(overlayWindow, default, null, &size, memoryDc,
                             &winPtSrc, new COLORREF(0), &blend, UPDATE_LAYERED_WINDOW_FLAGS.ULW_ALPHA))
                         {
-                            logger.Error($"BorderRenderer. UpdateLayeredWindow failed. Error code: {Marshal.GetLastWin32Error()}");
+                            Logger.Error($"BorderRenderer. UpdateLayeredWindow failed. Error code: {Marshal.GetLastWin32Error()}");
                         }
 
                         PInvoke.SelectObject(memoryDc, oldBitmap);
@@ -178,7 +176,7 @@ internal class BorderRenderer : IDisposable
         }
         catch (Exception ex)
         {
-            logger.Error($"BorderRenderer. Error during RenderBorder.", ex);
+            Logger.Error("BorderRenderer. Error during RenderBorder.", ex);
         }
     }
 
@@ -227,14 +225,13 @@ internal class BorderRenderer : IDisposable
             var result = PInvoke.SetProcessDpiAwarenessContext((DPI_AWARENESS_CONTEXT)(-4));
 
             if(result == false)
-                logger.Error($"BorderRenderer. Error setting DPI awarness. Error Code: {Marshal.GetLastWin32Error()}");
+                Logger.Error($"BorderRenderer. Error setting DPI awarness. Error Code: {Marshal.GetLastWin32Error()}");
             else
-                logger.Info($"BorderRenderer. DPI awarness enabled");
+                Logger.Info("BorderRenderer. DPI awarness enabled");
         }
         catch (Exception ex)
         {
-
-            logger.Error($"BorderRenderer. Error enabling DPI awarness", ex);
+            Logger.Error("BorderRenderer. Error enabling DPI awarness", ex);
         }
     }
 
@@ -266,7 +263,7 @@ internal class BorderRenderer : IDisposable
 
             if (atom == IntPtr.Zero)
             {
-                logger.Error($"BorderRenderer. Error registering window class. Error code: {Marshal.GetLastWin32Error()}");
+                Logger.Error($"BorderRenderer. Error registering window class. Error code: {Marshal.GetLastWin32Error()}");
                 return default;
             }
 
@@ -287,7 +284,7 @@ internal class BorderRenderer : IDisposable
 
             if (wHwnd.IsNull)
             {
-                logger.Error($"BorderRenderer. Error creating window. Error code: {Marshal.GetLastWin32Error()}");
+                Logger.Error($"BorderRenderer. Error creating window. Error code: {Marshal.GetLastWin32Error()}");
                 return default;
             }
         }
@@ -300,7 +297,7 @@ internal class BorderRenderer : IDisposable
         var success = PInvoke.DestroyWindow(overlayWindow);
         if (!success)
         {
-            logger.Error($"BorderRenderer. Error destroying window. Error code: {Marshal.GetLastWin32Error()}");
+            Logger.Error($"BorderRenderer. Error destroying window. Error code: {Marshal.GetLastWin32Error()}");
         }
     }
 

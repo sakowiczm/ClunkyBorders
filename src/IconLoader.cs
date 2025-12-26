@@ -6,18 +6,11 @@ namespace ClunkyBorders;
 
 internal class IconLoader
 {
-    private readonly Logger logger = null!;
-
-    public IconLoader(Logger logger)
-    {
-        this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
-    }
-
     public unsafe HICON LoadFromResources(string fileName)
     {
         if (string.IsNullOrEmpty(fileName))
         {
-            logger.Error($"IconLoader. Error loading icon. Invalid icon name");
+            Logger.Error("IconLoader. Error loading icon. Invalid icon name");
             return default;
         }
 
@@ -67,7 +60,7 @@ internal class IconLoader
 
                 if(hIcon.IsNull)
                 {
-                    logger.Error($"IconLoader. Error loading icon. Error code: {Marshal.GetLastWin32Error()}");
+                    Logger.Error($"IconLoader. Error loading icon. Error code: {Marshal.GetLastWin32Error()}");
                 }
 
                 return hIcon.IsNull ? default : hIcon;
@@ -75,7 +68,7 @@ internal class IconLoader
         }
         catch(Exception ex)
         {
-            logger.Error($"IconLoader. Error loading icon.", ex);
+            Logger.Error("IconLoader. Error loading icon.", ex);
             return default;
         }
     }

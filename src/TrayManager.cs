@@ -22,16 +22,14 @@ internal class TrayManager : IDisposable
     private static HMENU hMenu;
     private static NOTIFYICONDATAW notifyIconData;
 
-    private readonly Logger logger = null!;
     private readonly IconLoader iconLoader = null!;
     private bool disposed = false;
 
-    public TrayManager(IconLoader iconLoader, Logger logger)
+    public TrayManager(IconLoader iconLoader)
     {
         try
         {
             this.iconLoader = iconLoader ?? throw new ArgumentNullException(nameof(iconLoader));
-            this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
             messageWindow = CreateWindow();
             notifyIconData = CreateTrayIcon(messageWindow, IconFileName);
@@ -39,7 +37,7 @@ internal class TrayManager : IDisposable
         }
         catch (Exception ex)
         {
-            logger.Error($"TrayManager. Error initializing.", ex);
+            Logger.Error("TrayManager. Error initializing.", ex);
         }
     }
 
@@ -63,7 +61,7 @@ internal class TrayManager : IDisposable
 
             if (atom == IntPtr.Zero)
             {
-                logger.Error($"TrayManager. Error registering window class. Error code: {Marshal.GetLastWin32Error()}");
+                Logger.Error($"TrayManager. Error registering window class. Error code: {Marshal.GetLastWin32Error()}");
                 return default;
             }
 
@@ -82,7 +80,7 @@ internal class TrayManager : IDisposable
 
             if (wHwnd.IsNull)
             {
-                logger.Error($"TrayManager. Error creating window. Error code: {Marshal.GetLastWin32Error()}");
+                Logger.Error($"TrayManager. Error creating window. Error code: {Marshal.GetLastWin32Error()}");
                 return default;
             }
 
@@ -178,7 +176,7 @@ internal class TrayManager : IDisposable
         var success = PInvoke.DestroyWindow(messageWindow);
         if (!success)
         {
-            logger.Error($"TrayManager. Error destroying window. Error code: {Marshal.GetLastWin32Error()}");
+            Logger.Error($"TrayManager. Error destroying window. Error code: {Marshal.GetLastWin32Error()}");
         }
     }
 

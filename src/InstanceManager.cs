@@ -2,16 +2,9 @@
 
 internal class InstanceManager : IDisposable
 {
-    private readonly Logger logger;
-
     private const string MutexName = "Global\\ClunkyBorders_7E826ED2-5326-4891-B91D-3A7B38522AD4";
     private Mutex? mutex;
     private bool instanceExists;
-
-    public InstanceManager(Logger logger)
-    {
-        this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
-    }
 
     public bool IsSingleInstance()
     {
@@ -40,7 +33,7 @@ internal class InstanceManager : IDisposable
         }
         catch (Exception ex)
         {
-            logger.Error($"InstanceManager. Error checking instance.", ex);
+            Logger.Error($"InstanceManager. Error checking instance.", ex);
             return false;
         }
     }
@@ -56,7 +49,7 @@ internal class InstanceManager : IDisposable
             }
             catch (Exception ex)
             {
-                logger.Error($"InstanceManager. Error releasing instance lock.", ex);
+                Logger.Error($"InstanceManager. Error releasing instance lock.", ex);
             }
         }
 
