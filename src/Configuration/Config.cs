@@ -1,6 +1,38 @@
 ﻿namespace ClunkyBorders.Configuration;
 
-internal class WindowConfiguration
+internal record Config
+{
+    public BorderConfig Border { get; init; }
+    public WindowConfig Window { get; init; }
+
+    public Config() 
+    {
+        Border = new BorderConfig();
+        Window = new WindowConfig();
+    }
+
+    public Config(BorderConfig border, WindowConfig window)
+    {
+        Border = border;
+        Window = window;
+    }
+
+    public bool Validate()
+    {
+        // todo: return validation errors so we can log it
+        return true;
+    }
+}
+
+internal record BorderConfig
+{
+    public uint Color { get; set; } = 0xFFFFA500;
+    public int Width { get; set; } = 4;
+    public int Gap { get; set; } = 0;
+    public int Radius { get; set; } = 0;
+}
+
+internal record WindowConfig
 {
     public HashSet<string> ExcludedClassNames = new HashSet<string>()
     {

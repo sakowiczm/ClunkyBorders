@@ -2,8 +2,6 @@
 
 ![Screenshot](img/screenshot.png)
 
-*ClunkyBorders* is the Windows spiritual counterpart to [*JankyBorders*](https://github.com/FelixKratz/JankyBorders).
-
 It’s a lightweight Windows 11 utility that adds a colored border around the currently focused window. This makes it easy to see which window is active, especially when you have several apps open at once.
 
 The application uses native Windows APIs, keeping it small (~3MB) and efficient.
@@ -43,7 +41,8 @@ dotnet publish -c Release
 
 ## Todo
 
-- Log to file
+- parameter with config file path and name
+- log configuration validation errors
 - Add rounded corners to the border
 - Introduce gap
 - How can handle elevate windows?

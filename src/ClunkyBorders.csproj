@@ -27,4 +27,10 @@
      <EmbeddedResource Include="icon.ico" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="config.toml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

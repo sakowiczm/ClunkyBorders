@@ -7,7 +7,6 @@ internal class Program
 {
     private static int Main(string[] args)
     {
-
         Logger.Info($"ClunkyBorder Starting");
         Logger.Info($"Log file: {Logger.LogFilePath}");
         Logger.Info($"OS Version: {Environment.OSVersion}");
@@ -20,11 +19,10 @@ internal class Program
             return 1;
         }
 
-        var windowConfig = new WindowConfiguration();
-        var borderConfig = new BorderConfiguration();
+        var config = ConfigManager.Load();
 
         var iconLoader = new IconLoader();
-        using var borderRenderer = new BorderRenderer(borderConfig);
+        using var borderRenderer = new BorderRenderer(config.Border);
         using var trayManager = new TrayManager(iconLoader);
         using var focusMonitor = new FocusMonitor();
 
@@ -32,7 +30,7 @@ internal class Program
         {
             try
             {
-                if (windowInfo != null && windowConfig.ExcludedClassNames.Contains(windowInfo.ClassName))
+                if (windowInfo != null && config.Window.ExcludedClassNames.Contains(windowInfo.ClassName))
                 {
                     Logger.Debug($"Main. Excluding window. {windowInfo}");
                     return;

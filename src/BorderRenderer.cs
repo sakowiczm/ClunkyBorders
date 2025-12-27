@@ -17,11 +17,11 @@ internal class BorderRenderer : IDisposable
     private HWND overlayWindow;
     private bool isWindowVisible = false;
 
-    private readonly BorderConfiguration borderConfiguration = null!;
+    private readonly BorderConfig borderConfiguration = null!;
 
     private bool disposed = false;
 
-    public unsafe BorderRenderer(BorderConfiguration borderConfig)
+    public unsafe BorderRenderer(BorderConfig borderConfig)
     {
         try
         {
@@ -195,7 +195,7 @@ internal class BorderRenderer : IDisposable
         int h = window.Rect.Height;
 
         // scale border to current screen DPI
-        int border = (int)(borderConfiguration.Thickness * GetScaleFactor(window.DPI));
+        int border = (int)(borderConfiguration.Width * GetScaleFactor(window.DPI));
 
         // Top border
         for (int y = 0; y < border; y++)
