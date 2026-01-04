@@ -1,4 +1,6 @@
-﻿namespace ClunkyBorders.Configuration;
+﻿using System.Globalization;
+
+namespace ClunkyBorders.Configuration;
 
 internal class ConfigManager
 {
@@ -24,7 +26,7 @@ internal class ConfigManager
             var toml = File.ReadAllLines(configFilePath);
             var config = ParseToml(toml);
 
-            if(config.Validate())
+            if(config.IsValid)
                 return config;
 
             Logger.Error("ConfigManager. Configuration is invalid - loading default configuration.");
@@ -39,16 +41,88 @@ internal class ConfigManager
 
     private static Config ParseToml(string[] lines)
     {
-        // todo: add parsing
+        lines = lines.Select(o => o.Trim())
+            .Select(o => RemoveComments(o))
+            .Where(o => !string.IsNullOrWhiteSpace(o))
+            .ToArray();
+
+        var borderConfig = GetBorderConfig(lines);
+
+        return new Config(borderConfig, new WindowConfig());
+    }
+
+    private static string RemoveComments(string line)
+    {
+        var i = line.IndexOf("#");
+
+        if (i == 0)
+            return string.Empty;
+       
+        if(i > 0)
+            return line.Substring(0, i).Trim();
+
+        return line;
+    }
+
+    private static BorderConfig GetBorderConfig(string[] lines)
+    {
+        bool isBorderSection = false;
+        
+        int width = 0;
+        uint color = 0;
 
         foreach (var line in lines)
         {
-            // tirm whitespace
-            // trim comments
-            // check section
-            // check for values
+            if (line.StartsWith("[") && line.EndsWith("]"))
+            {
+                var sectionName = line.Substring(1, line.Length - 2).Trim();
+                isBorderSection = sectionName.Equals("border", StringComparison.OrdinalIgnoreCase);
+            }
+
+            if (isBorderSection)
+            {
+                var index = line.IndexOf("=");
+                if (index > 0)
+                {
+                    string key = line.Substring(0, index).Trim();
+                    string value = line.Substring(++index).Trim();
+
+                    switch (key.ToLowerInvariant())
+                    {
+                        case "width":
+                            if (int.TryParse(value, out int o))
+                            {
+                                width = o;
+                            }
+                            break;
+
+                        case "color":
+                            color = ParseHexValue(value);
+                            break;
+                    }
+                }
+            }
         }
 
-        return new Config();
+        return new BorderConfig
+        {
+            Width = width,
+            Color = color,
+        };
+    }
+
+    private static uint ParseHexValue(string value)
+    {
+        if (value.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+        {
+            value = value.Substring(2);
+        }
+
+        if (uint.TryParse(value, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out uint result))
+        {
+            return result;
+        }
+
+        return 0;
     }
 }

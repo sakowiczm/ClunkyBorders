@@ -282,6 +282,8 @@ internal class BorderRenderer : IDisposable
                 hInstance,
                 null);
 
+            // todo: set rounded corners
+
             if (wHwnd.IsNull)
             {
                 Logger.Error($"BorderRenderer. Error creating window. Error code: {Marshal.GetLastWin32Error()}");

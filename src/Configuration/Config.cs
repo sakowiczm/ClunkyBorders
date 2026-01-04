@@ -1,6 +1,6 @@
 ﻿namespace ClunkyBorders.Configuration;
 
-internal record Config
+internal record class Config
 {
     public BorderConfig Border { get; init; }
     public WindowConfig Window { get; init; }
@@ -17,22 +17,20 @@ internal record Config
         Window = window;
     }
 
-    public bool Validate()
-    {
-        // todo: return validation errors so we can log it
-        return true;
-    }
+    public bool IsValid => Border.IsValid && Window.IsValid;
 }
 
-internal record BorderConfig
+internal record class BorderConfig
 {
     public uint Color { get; set; } = 0xFFFFA500;
     public int Width { get; set; } = 4;
     public int Gap { get; set; } = 0;
     public int Radius { get; set; } = 0;
+
+    public bool IsValid => Color > 0 && Width > 1;
 }
 
-internal record WindowConfig
+internal record class WindowConfig
 {
     public HashSet<string> ExcludedClassNames = new HashSet<string>()
     {
@@ -44,4 +42,6 @@ internal record WindowConfig
         "Progman",                                  // Program Manager - e.g when clicking a desktop
         "WorkerW"                                   // Windows Desktop
     };
+
+    public bool IsValid => true;
 }
