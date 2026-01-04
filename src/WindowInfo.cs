@@ -18,6 +18,18 @@ internal record WindowInfo
 
     public uint DPI { get; init; }
 
+    public RECT GetOverlayRect(int size = 0)
+    {
+        if (size == 0)
+            return Rect;
+
+        return RECT.FromXYWH(
+                Rect.X - size, 
+                Rect.Y - size,
+                Rect.Width + 2 * size, 
+                Rect.Height + 2 * size);
+    }
+
     public bool CanHaveBorder()
     {
         return State == WindowState.Normal && IsParent && !Rect.IsEmpty;

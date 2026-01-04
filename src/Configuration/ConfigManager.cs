@@ -70,6 +70,7 @@ internal class ConfigManager
         
         int width = 0;
         uint color = 0;
+        int offset = 0;
 
         foreach (var line in lines)
         {
@@ -90,14 +91,21 @@ internal class ConfigManager
                     switch (key.ToLowerInvariant())
                     {
                         case "width":
-                            if (int.TryParse(value, out int o))
+                            if (int.TryParse(value, out int w))
                             {
-                                width = o;
+                                width = w;
                             }
                             break;
 
                         case "color":
                             color = ParseHexValue(value);
+                            break;
+
+                        case "offset":
+                            if (int.TryParse(value, out int g))
+                            {
+                                offset = g;
+                            }
                             break;
                     }
                 }
@@ -108,6 +116,7 @@ internal class ConfigManager
         {
             Width = width,
             Color = color,
+            Offset = offset
         };
     }
 

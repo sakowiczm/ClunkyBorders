@@ -55,12 +55,14 @@ internal class BorderRenderer : IDisposable
             return;
         }
 
-        DrawBorder(window);
+        var overlayRect = window.GetOverlayRect(borderConfiguration.Offset);
+
+        DrawBorder(overlayRect.Width, overlayRect.Height, window.DPI);
 
         PInvoke.SetWindowPos(
             overlayWindow,
             HWND.HWND_TOPMOST,
-            window.Rect.X, window.Rect.Y, window.Rect.Width, window.Rect.Height,
+            overlayRect.X, overlayRect.Y, overlayRect.Width, overlayRect.Height,
             SET_WINDOW_POS_FLAGS.SWP_NOACTIVATE | SET_WINDOW_POS_FLAGS.SWP_SHOWWINDOW);
 
         if (!isWindowVisible)
@@ -68,9 +70,21 @@ internal class BorderRenderer : IDisposable
             PInvoke.ShowWindow(overlayWindow, SHOW_WINDOW_CMD.SW_SHOWNOACTIVATE);
             isWindowVisible = true;
 
-            Logger.Debug($"BorderRenderer. Border is shown. Size: {window.Rect.X}, {window.Rect.Y}, {window.Rect.Width}, {window.Rect.Height}");
+            Logger.Debug($"""
+                          BorderRenderer. Border is shown. 
+                            Original: {window.Rect.X}, {window.Rect.Y}, {window.Rect.Width}, {window.Rect.Height}
+                            Adjusted: {overlayRect.X}, {overlayRect.Y}, {overlayRect.Width}, {overlayRect.Height}
+                         """);
         }
     }
+
+    // Offset = 0 - border is drawn inside existing window size 
+
+    // if Offset is != 0 then border size is adjusted by offset size on each side. Meaning original active window size is extended by offset and then border is drawn on newly created RECT.
+    // This way you can achieve different effect e.g.
+    //  border is drawn fully outside active window (e.g with a offset) e.g. offset = 6, width = 3 - you get 3px offset between 3px width border and active window
+    //  border is drawn partially outside partially inside the active window e.g offset = 3, width = 6 - 3px of border is drawn outside active window, and 3px is drawn inside the active window location.
+    //  border is drawn fully inside the area of active window with border between window and the border - offset = -3px and width = 3px
 
     public void Hide() 
     { 
@@ -92,7 +106,7 @@ internal class BorderRenderer : IDisposable
         }
     }
 
-    private unsafe void DrawBorder(WindowInfo window)
+    private unsafe void DrawBorder(int width, int height, uint dpi)
     {
         try
         {
@@ -119,8 +133,8 @@ internal class BorderRenderer : IDisposable
                         bmiHeader = new BITMAPINFOHEADER
                         {
                             biSize = (uint)Marshal.SizeOf<BITMAPINFOHEADER>(),
-                            biWidth = window.Rect.Width,
-                            biHeight = -window.Rect.Height, // top-down bitmap
+                            biWidth = width,
+                            biHeight = -height, // top-down bitmap
                             biPlanes = 1,
                             biBitCount = 32,
                             biCompression = 0,
@@ -146,9 +160,9 @@ internal class BorderRenderer : IDisposable
                     {
                         var oldBitmap = PInvoke.SelectObject(memoryDc, hBitmap);
 
-                        SetPixels(window, (uint*)pBits);
+                        SetPixels(width, height, dpi, (uint*)pBits);
 
-                        var size = new SIZE { cx = window.Rect.Width, cy = window.Rect.Height };
+                        var size = new SIZE { cx = width, cy = height };
                         var winPtSrc = new System.Drawing.Point(0, 0);
                         var blend = new BLENDFUNCTION
                         {
@@ -191,20 +205,20 @@ internal class BorderRenderer : IDisposable
 
     private static float GetScaleFactor(uint dpi) => dpi == 0 ? 1 : (float)dpi / DEFAULT_SCREEN_DPI;
 
-    private unsafe void SetPixels(WindowInfo window, uint* pixels)
+    private unsafe void SetPixels(int width, int height, uint dpi, uint* pixels)
     {
-        var pixelCount = window.Rect.Width * window.Rect.Height;
+        var pixelCount = width * height;
         for (int i = 0; i < pixelCount; i++)
         {
             pixels[i] = 0x00000000; // Fully transparent
         }
 
         uint borderColor = borderConfiguration.Color;
-        int w = window.Rect.Width;
-        int h = window.Rect.Height;
+        int w = width;
+        int h = height;
 
         // scale border to current screen DPI
-        int border = (int)(borderConfiguration.Width * GetScaleFactor(window.DPI));
+        int border = (int)(borderConfiguration.Width * GetScaleFactor(dpi));
 
         // Top border
         for (int y = 0; y < border; y++)

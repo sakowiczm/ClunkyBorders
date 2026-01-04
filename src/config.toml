@@ -1,3 +1,4 @@
 [Border]
-Width = 5
+Width = 6
+Offset = 5
 Color = 0xFFFFA500

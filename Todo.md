@@ -1,7 +1,8 @@
 ## Todo
 
+- Offset - document & test when not using window manager that introduce gap
 - Command line parameter to point to different config file location
-- Introduce gap
+- Inner rounder corners - how this would look like
 - Elevate windows description
 - Exclude pintscreen app
      Class Name: XamlWindow
