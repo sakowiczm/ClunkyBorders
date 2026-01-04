@@ -2,6 +2,7 @@
 using System.Runtime.InteropServices;
 using Windows.Win32;
 using Windows.Win32.Foundation;
+using Windows.Win32.Graphics.Dwm;
 using Windows.Win32.Graphics.Gdi;
 using Windows.Win32.UI.HiDpi;
 using Windows.Win32.UI.WindowsAndMessaging;
@@ -20,6 +21,14 @@ internal class BorderRenderer : IDisposable
     private readonly BorderConfig borderConfiguration = null!;
 
     private bool disposed = false;
+
+    public enum DWM_WINDOW_CORNER_PREFERENCE
+    {
+        DWMWCP_DEFAULT = 0,
+        DWMWCP_DONOTROUND = 1,
+        DWMWCP_ROUND = 2,
+        DWMWCP_ROUNDSMALL = 3
+    }
 
     public unsafe BorderRenderer(BorderConfig borderConfig)
     {
@@ -282,7 +291,14 @@ internal class BorderRenderer : IDisposable
                 hInstance,
                 null);
 
-            // todo: set rounded corners
+            // set rounded corners
+            int cornerPreference = (int)DWM_WINDOW_CORNER_PREFERENCE.DWMWCP_ROUND;
+            PInvoke.DwmSetWindowAttribute(
+                wHwnd,
+                DWMWINDOWATTRIBUTE.DWMWA_WINDOW_CORNER_PREFERENCE,
+                &cornerPreference,
+                sizeof(int)
+            );
 
             if (wHwnd.IsNull)
             {
