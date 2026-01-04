@@ -20,9 +20,19 @@ I couldn’t find a comparable tool for Windows. The closest option was the buil
 
 So, I decided to spend a few fun evenings building my own solution 🙂
 
+## Configuration
+
+Default configuration file is `config.toml` uses [TOML](https://toml.io/en/) format. Currently allows configuration of border width and color.
+
+```
+[Border]
+Width = 5               # in pixels
+Color = 0xFFFFA500      # HEX color in ARGB
+```
+
 ## Usage 
 
-## Configuration
+To exit application use tray icon context menu.
 
 ## Build
 
@@ -38,18 +48,3 @@ To generate a standalone executable, run:
 ```ps
 dotnet publish -c Release
 ```
-
-## Todo
-
-- parameter with config file path and name
-- log configuration validation errors
-- Add rounded corners to the border
-- Introduce gap
-- How can handle elevate windows?
-- Exclude pintscreen app
-     Class Name: XamlWindow
-     Text: Snipping Tool Overlay
-- Border is drawn over window task bar - z-order issue
-- pop-up window border - is it an issue?
-   what about - get child window parent window HWND and compare with HWND of window currenlty have border - if the same keep border?
-- todo: add About window?   
