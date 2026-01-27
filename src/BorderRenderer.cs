@@ -59,9 +59,12 @@ internal class BorderRenderer : IDisposable
 
         DrawBorder(overlayRect.Width, overlayRect.Height, window.DPI);
 
+        // Use window.Handle instead of TOPMOST - that will get rid of border drawing over dialog boxes
+        // but will introduce issue with border color - when active window shadow will be drawn on top of 
+        // our border and color will be mutted and slighly different for different windows
         PInvoke.SetWindowPos(
             overlayWindow,
-            HWND.HWND_TOPMOST,
+            HWND.HWND_TOPMOST, 
             overlayRect.X, overlayRect.Y, overlayRect.Width, overlayRect.Height,
             SET_WINDOW_POS_FLAGS.SWP_NOACTIVATE | SET_WINDOW_POS_FLAGS.SWP_SHOWWINDOW);
 

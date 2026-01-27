@@ -24,9 +24,9 @@ internal class Program
         var iconLoader = new IconLoader();
         using var borderRenderer = new BorderRenderer(config.Border);
         using var trayManager = new TrayManager(iconLoader);
-        using var focusMonitor = new ActiveWindowMonitor();
+        using var activeMonitor = new ActiveWindowMonitor();
 
-        focusMonitor.WindowChanged += (sender, windowInfo) =>
+        activeMonitor.WindowChanged += (sender, windowInfo) =>
         {
             try
             {
@@ -54,7 +54,7 @@ internal class Program
 
         };
 
-        focusMonitor.Start();
+        activeMonitor.Start();
 
         while (PInvoke.GetMessage(out var msg, HWND.Null, 0, 0))
         {
@@ -62,7 +62,7 @@ internal class Program
             PInvoke.DispatchMessage(msg);
         }       
 
-        focusMonitor.Stop();
+        activeMonitor.Stop();
 
         return 0;
     }
