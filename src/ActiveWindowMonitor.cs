@@ -104,6 +104,28 @@ internal class ActiveWindowMonitor : IDisposable
                 case PInvoke.EVENT_SYSTEM_FOREGROUND:
                     break;
 
+                case PInvoke.EVENT_OBJECT_DESTROY:
+                case PInvoke.EVENT_OBJECT_HIDE:
+                case PInvoke.EVENT_SYSTEM_MINIMIZESTART:
+                    {
+                        var activeHwnd = PInvoke.GetForegroundWindow();
+                        if (hwnd != activeHwnd)
+                            return;
+
+                        // Only hide if the window is actually gone or hidden
+                        // for whatever reasons active window that is not being closed may get those events 
+                        if (!PInvoke.IsWindowVisible(hwnd) || !PInvoke.IsWindow(hwnd))
+                        {
+                            Logger.Debug($"ActiveWindowMonitor. Active window destruction/hide event detected: {hwnd}, event: {GetEventName(@event)}");
+                            WindowChanged?.Invoke(this, null);
+                        }
+                        else
+                        {
+                            Logger.Debug($"ActiveWindowMonitor. Suppressed border hide: window still visible and valid.");
+                        }
+                        return;
+                    }
+
                 default:
                     return;
             }
@@ -136,6 +158,13 @@ internal class ActiveWindowMonitor : IDisposable
     {
         try
         {
+            // Validate window handle is still valid
+            if (!PInvoke.IsWindow(hwnd))
+            {
+                Logger.Debug($"ActiveWindowMonitor. Window handle {hwnd} is no longer valid");
+                return null;
+            }
+
             var className = GetWindowClassName(hwnd);
             var text = GetWindowText(hwnd);
             var rect = GetWindowArea(hwnd);
@@ -293,6 +322,17 @@ internal class ActiveWindowMonitor : IDisposable
             Logger.Error("ActiveWindowMonitor. Error getting current active window.", ex);
             return null;
         }
+    }
+
+    private string GetEventName(uint @event)
+    {
+        return @event switch
+        {
+            PInvoke.EVENT_OBJECT_DESTROY => "DESTROY",
+            PInvoke.EVENT_OBJECT_HIDE => "HIDE",
+            PInvoke.EVENT_SYSTEM_MINIMIZESTART => "MINIMIZESTART",
+            _ => "UNKNOWN"
+        };
     }
 
     public void Dispose()
