@@ -90,6 +90,10 @@ internal class FocusMonitor : IDisposable
             {
                 case PInvoke.EVENT_OBJECT_LOCATIONCHANGE:
                     {
+                        // Only handle window-level location changes
+                        if (idObject != 0) // 0 = OBJID_WINDOW
+                            return;
+
                         // Only care about location changes for the active window
                         var activeHwnd = PInvoke.GetForegroundWindow();
                         if (hwnd != activeHwnd)
