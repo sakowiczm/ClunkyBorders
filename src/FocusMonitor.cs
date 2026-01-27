@@ -113,9 +113,16 @@ internal class FocusMonitor : IDisposable
 
             var window = GetWindow(hwnd);
 
-            if (window != null)
+            if (window != null && window.IsParent)
             {
                 WindowChanged?.Invoke(this, window);
+            }
+            else
+            {
+                if (window != null && !window.IsParent)
+                {
+                    Logger.Debug($"FocusMonitor. Ignoring non-parent window: {window.ClassName} - {window.Text}");
+                }
             }
 
         }
