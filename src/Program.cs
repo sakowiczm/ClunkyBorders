@@ -24,7 +24,7 @@ internal class Program
         var iconLoader = new IconLoader();
         using var borderRenderer = new BorderRenderer(config.Border);
         using var trayManager = new TrayManager(iconLoader);
-        using var focusMonitor = new FocusMonitor();
+        using var focusMonitor = new ActiveWindowMonitor();
 
         focusMonitor.WindowChanged += (sender, windowInfo) =>
         {

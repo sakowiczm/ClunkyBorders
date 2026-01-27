@@ -7,7 +7,7 @@ using Windows.Win32.UI.WindowsAndMessaging;
 
 namespace ClunkyBorders;
 
-internal class FocusMonitor : IDisposable
+internal class ActiveWindowMonitor : IDisposable
 {
     public event EventHandler<WindowInfo?>? WindowChanged;
 
@@ -22,11 +22,11 @@ internal class FocusMonitor : IDisposable
         {
             if (isStarted)
             {
-                Logger.Debug("FocusMonitor. Already started.");
+                Logger.Debug("ActiveWindowMonitor. Already started.");
                 return;
             }
 
-            Logger.Debug("FocusMonitor. Starting.");
+            Logger.Debug("ActiveWindowMonitor. Starting.");
 
             eventHook = PInvoke.SetWinEventHook(
                 PInvoke.EVENT_SYSTEM_FOREGROUND,
@@ -41,7 +41,7 @@ internal class FocusMonitor : IDisposable
 
             if (eventHook == IntPtr.Zero)
             {
-                Logger.Error($"FocusMonitor. Failed to set SetWinEventHook. Error code: {Marshal.GetLastWin32Error()}");
+                Logger.Error($"ActiveWindowMonitor. Failed to set SetWinEventHook. Error code: {Marshal.GetLastWin32Error()}");
                 return;
             }
 
@@ -55,7 +55,7 @@ internal class FocusMonitor : IDisposable
         }
         catch(Exception ex) 
         {
-            Logger.Error($"FocusMonitor. Error starting.", ex);
+            Logger.Error($"ActiveWindowMonitor. Error starting.", ex);
         }
     }
 
@@ -73,11 +73,11 @@ internal class FocusMonitor : IDisposable
             }
 
             isStarted = false;
-            Logger.Debug("FocusMonitor. Stopped.");
+            Logger.Debug("ActiveWindowMonitor. Stopped.");
         }
         catch (Exception ex)
         {
-            Logger.Error($"FocusMonitor. Error stopping.", ex);
+            Logger.Error($"ActiveWindowMonitor. Error stopping.", ex);
         }
     }
 
@@ -121,14 +121,14 @@ internal class FocusMonitor : IDisposable
             {
                 if (window != null && !window.IsParent)
                 {
-                    Logger.Debug($"FocusMonitor. Ignoring non-parent window: {window.ClassName} - {window.Text}");
+                    Logger.Debug($"ActiveWindowMonitor. Ignoring non-parent window: {window.ClassName} - {window.Text}");
                 }
             }
 
         }
         catch (Exception ex)
         {
-            Logger.Error($"FocusMonitor. Error in OnWindowChange.", ex);
+            Logger.Error($"ActiveWindowMonitor. Error in OnWindowChange.", ex);
         }
     }
 
@@ -156,7 +156,7 @@ internal class FocusMonitor : IDisposable
         }
         catch (Exception ex)
         {
-            Logger.Error($"FocusMonitor. Error getting window {hwnd} information.", ex);
+            Logger.Error($"ActiveWindowMonitor. Error getting window {hwnd} information.", ex);
             return null;
         }
     }
@@ -177,14 +177,14 @@ internal class FocusMonitor : IDisposable
             if (hResult.Succeeded)
                 return rect;
 
-            Logger.Error($"FocusMonitor. Error getting extended window ({hwnd}) rect. Error code: {Marshal.GetLastWin32Error()}.");
+            Logger.Error($"ActiveWindowMonitor. Error getting extended window ({hwnd}) rect. Error code: {Marshal.GetLastWin32Error()}.");
 
             // fallback
             var result = PInvoke.GetWindowRect(hwnd, out rect);
 
             if (result == 0)
             {
-                Logger.Error($"FocusMonitor. Error getting window ({hwnd}) rect. Error code: {Marshal.GetLastWin32Error()}.");
+                Logger.Error($"ActiveWindowMonitor. Error getting window ({hwnd}) rect. Error code: {Marshal.GetLastWin32Error()}.");
                 return default;
             }
 
@@ -192,7 +192,7 @@ internal class FocusMonitor : IDisposable
         }
         catch (Exception ex)
         {
-            Logger.Error($"FocusMonitor. Error getting window ({hwnd}) rect.", ex);
+            Logger.Error($"ActiveWindowMonitor. Error getting window ({hwnd}) rect.", ex);
             return default;
         }
     }
@@ -221,7 +221,7 @@ internal class FocusMonitor : IDisposable
         }
         catch (Exception ex)
         {
-            Logger.Error($"FocusMonitor. Error checking window parent.", ex);
+            Logger.Error($"ActiveWindowMonitor. Error checking window parent.", ex);
             return false;
         }
     }
@@ -235,7 +235,7 @@ internal class FocusMonitor : IDisposable
 
         if (result == 0)
         {
-            Logger.Error($"FocusMonitor. Error getting window state.");
+            Logger.Error($"ActiveWindowMonitor. Error getting window state.");
             return WindowState.Unknown;
         }
 
@@ -281,7 +281,7 @@ internal class FocusMonitor : IDisposable
 
             if (hwnd.IsNull)
             {
-                Logger.Error("FocusMonitor. No active window.");
+                Logger.Error("ActiveWindowMonitor. No active window.");
                 return null;
             }
 
@@ -290,7 +290,7 @@ internal class FocusMonitor : IDisposable
         }
         catch (Exception ex)
         {
-            Logger.Error("FocusMonitor. Error getting current active window.", ex);
+            Logger.Error("ActiveWindowMonitor. Error getting current active window.", ex);
             return null;
         }
     }
@@ -311,7 +311,7 @@ internal class FocusMonitor : IDisposable
         disposed = true;
     }
 
-    ~FocusMonitor()
+    ~ActiveWindowMonitor()
     {
         Dispose(false);
     }
