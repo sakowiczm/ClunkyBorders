@@ -1,4 +1,7 @@
-﻿using Windows.Win32.Foundation;
+﻿using System.Runtime.InteropServices;
+using Windows.Win32;
+using Windows.Win32.Foundation;
+using Windows.Win32.Graphics.Dwm;
 
 namespace ClunkyBorders;
 
@@ -46,6 +49,34 @@ internal record WindowInfo
                     DPI: {DPI}
                     Rect: {Rect.left}, {Rect.top}, {Rect.right}, {Rect.bottom}
                 """;
+    }
+
+    public unsafe bool IsWindowReady()
+    {
+        // Check if window is visible
+        if (!PInvoke.IsWindowVisible(Handle))
+        {
+            return false;
+        }
+
+        // Check if window is cloaked (hidden during animations/transitions)
+        int cloaked = 0;
+        var result = PInvoke.DwmGetWindowAttribute(
+            Handle,
+            DWMWINDOWATTRIBUTE.DWMWA_CLOAKED,
+            &cloaked,
+            sizeof(int)
+        );
+
+        if (result.Failed)
+        {
+            Logger.Warning($"WindowReadinessChecker. Failed to get cloaked attribute. Error code: {Marshal.GetLastWin32Error()}");
+            // Assume ready if we can't check
+            return true;
+        }
+
+        // If cloaked (non-zero), window is not ready
+        return cloaked == 0;
     }
 }
 

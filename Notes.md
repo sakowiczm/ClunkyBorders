@@ -64,9 +64,7 @@
 - Resize to very large dimensions ? Verify border scales correctly
 
 ### Multiple Applications
-- Open Chrome ? Verify border appears
-- Switch to VS Code ? Verify border moves to VS Code
-- Switch to File Explorer ? Verify border moves to Explorer
+- Switch between different apps using mouse 
 - Rapid Alt+Tab between apps ? Verify border transitions correctly
 - Minimize to desktop Win+D ? Verify border disappears / appears correctly
 
@@ -75,7 +73,8 @@
 - Open context menus ? Verify border doesn't interfere
 - Open system dialogs (Save/Open) ? Verify appropriate handling
 - Lock workstation and unlock ? Verify application recovers
-- Switch to fullscreen application (video, game) ? Verify border hidden
+- Switch to fullscreen application ? Verify border hidden
+- Delay when window is not ready (e.g when cloaked - opening window window with WIN+E) ? Verify border is not displayed for long time without active window
 
 ### Application Lifecycle
 - Exit application ? Verify clean shutdown

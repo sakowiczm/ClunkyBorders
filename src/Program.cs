@@ -26,7 +26,7 @@ internal class Program
         using var trayManager = new TrayManager(iconLoader);
         using var activeMonitor = new ActiveWindowMonitor();
 
-        activeMonitor.WindowChanged += (sender, windowInfo) =>
+        activeMonitor.WindowChanged += async (sender, windowInfo) =>
         {
             try
             {
@@ -38,6 +38,9 @@ internal class Program
 
                 if (windowInfo != null && windowInfo.CanHaveBorder())
                 {
+                    // todo: describe / add to configuration
+                    await DelayIfWindowIsNotReady(windowInfo, 30, 700);
+
                     borderRenderer.Show(windowInfo);
                 }
                 else
@@ -65,5 +68,24 @@ internal class Program
         activeMonitor.Stop();
 
         return 0;
+    }
+
+    public static async Task<bool> DelayIfWindowIsNotReady(WindowInfo window, int intervalDelay = 20, int maxDelay = 300)
+    {
+        for (int elapsed = 0; elapsed < maxDelay; elapsed += intervalDelay)
+        {
+            if (window.IsWindowReady())
+            {
+                return true;
+            }
+            await Task.Delay(intervalDelay);
+        }
+
+        var isReady = window.IsWindowReady();
+
+        if (!isReady)
+            Logger.Debug($"Main. Window not ready after waiting, showing border anyway.");
+
+        return isReady;
     }
 }
