@@ -41,6 +41,14 @@ internal class Program
                     // todo: describe / add to configuration
                     await DelayIfWindowIsNotReady(windowInfo, 30, 700);
 
+                    // Verify the window is still the foreground window before showing border
+                    // Filters out brief focus changes comming from other windows
+                    if (!windowInfo.IsForegroundWindow())
+                    {
+                        Logger.Debug($"Main. Window {windowInfo.ClassName} is no longer foreground. Skipping border.");
+                        return;
+                    }
+
                     borderRenderer.Show(windowInfo);
                 }
                 else

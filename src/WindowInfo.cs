@@ -38,6 +38,12 @@ internal record WindowInfo
         return State == WindowState.Normal && IsParent && !Rect.IsEmpty;
     }
 
+    public unsafe bool IsForegroundWindow()
+    {
+        var foregroundHandle = PInvoke.GetForegroundWindow();
+        return foregroundHandle == Handle;
+    }
+
     public override string ToString()
     {
         return $"""
