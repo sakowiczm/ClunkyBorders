@@ -5,6 +5,8 @@ using Windows.Win32.Foundation;
 
 internal class Program
 {
+    private static CancellationTokenSource? _cancellationTokenSource;
+
     private static int Main(string[] args)
     {
         Logger.Info($"ClunkyBorder Starting");
@@ -28,8 +30,15 @@ internal class Program
 
         activeMonitor.WindowChanged += async (sender, windowInfo) =>
         {
+            // Cancel previous operation
+            _cancellationTokenSource?.Cancel();
+            _cancellationTokenSource = new CancellationTokenSource();
+            var ct = _cancellationTokenSource.Token;
+
             try
             {
+                if (ct.IsCancellationRequested) return;
+
                 if (windowInfo != null && config.Window.ExcludedClassNames.Contains(windowInfo.ClassName))
                 {
                     Logger.Debug($"Main. Excluding window. {windowInfo}");
@@ -41,11 +50,13 @@ internal class Program
                     // todo: describe / add to configuration
                     await DelayIfWindowIsNotReady(windowInfo, 30, 700);
 
+                    if (ct.IsCancellationRequested) return;
+
                     // Verify the window is still the foreground window before showing border
                     // Filters out brief focus changes comming from other windows
-                    if (!windowInfo.IsForegroundWindow())
+                    if (!windowInfo.IsValidForBorder())
                     {
-                        Logger.Debug($"Main. Window {windowInfo.ClassName} is no longer foreground. Skipping border.");
+                        Logger.Debug($"Main. Window {windowInfo.ClassName} is not valid for border (not foreground or not ready). Skipping border.");
                         return;
                     }
 
@@ -57,6 +68,10 @@ internal class Program
 
                     borderRenderer.Hide();
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected - new window event came in
             }
             catch
             {
@@ -75,22 +90,22 @@ internal class Program
 
         activeMonitor.Stop();
 
+        _cancellationTokenSource?.Dispose();
+
         return 0;
     }
 
-    public static async Task<bool> DelayIfWindowIsNotReady(WindowInfo window, int intervalDelay = 20, int maxDelay = 300)
+    public static async Task<bool> DelayIfWindowIsNotReady(WindowInfo window, int intervalDelay, int maxDelay, CancellationToken token = default)
     {
         for (int elapsed = 0; elapsed < maxDelay; elapsed += intervalDelay)
         {
-            if (window.IsWindowReady())
-            {
+            if (window.IsValidForBorder())
                 return true;
-            }
-            await Task.Delay(intervalDelay);
+
+            await Task.Delay(intervalDelay, token);
         }
 
-        var isReady = window.IsWindowReady();
-
+        var isReady = window.IsValidForBorder();
         if (!isReady)
             Logger.Debug($"Main. Window not ready after waiting, showing border anyway.");
 

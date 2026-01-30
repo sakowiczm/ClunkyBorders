@@ -44,6 +44,8 @@ internal record WindowInfo
         return foregroundHandle == Handle;
     }
 
+    public bool IsValidForBorder() => IsForegroundWindow() && IsWindowReady();
+
     public override string ToString()
     {
         return $"""
