@@ -105,7 +105,7 @@ internal class BorderRenderer : IDisposable
         }
         catch (Exception ex)
         {
-            Logger.Error($"BorderRenderer. Error hidding border.", ex);
+            Logger.Error($"BorderRenderer. Error hiding border.", ex);
         }
     }
 
@@ -210,38 +210,28 @@ internal class BorderRenderer : IDisposable
 
     private unsafe void SetPixels(int width, int height, uint dpi, uint* pixels)
     {
-        var pixelCount = width * height;
-        for (int i = 0; i < pixelCount; i++)
-        {
-            pixels[i] = 0x00000000; // Fully transparent
-        }
+        var span = new Span<uint>(pixels, width * height);
+        span.Clear(); // Faster than loop for zeroing
 
         uint borderColor = borderConfiguration.Color;
-        int w = width;
-        int h = height;
-
-        // scale border to current screen DPI
         int border = (int)(borderConfiguration.Width * GetScaleFactor(dpi));
 
-        // Top border
+        // Top and bottom borders
         for (int y = 0; y < border; y++)
-            for (int x = 0; x < w; x++)
-                pixels[y * w + x] = borderColor;
+        {
+            span.Slice(y * width, width).Fill(borderColor);
+            span.Slice((height - y - 1) * width, width).Fill(borderColor);
+        }
 
-        // Bottom border
-        for (int y = h - border; y < h; y++)
-            for (int x = 0; x < w; x++)
-                pixels[y * w + x] = borderColor;
-
-        // Left border
-        for (int y = 0; y < h; y++)
+        // Left and right borders (skip corners already drawn)
+        for (int y = border; y < height - border; y++)
+        {
             for (int x = 0; x < border; x++)
-                pixels[y * w + x] = borderColor;
-
-        // Right border
-        for (int y = 0; y < h; y++)
-            for (int x = w - border; x < w; x++)
-                pixels[y * w + x] = borderColor;
+            {
+                span[y * width + x] = borderColor;
+                span[y * width + (width - x - 1)] = borderColor;
+            }
+        }
     }
 
     private unsafe void EnableDpiAwarness()

@@ -53,7 +53,7 @@ internal class Program
                 }
                 else
                 {
-                    Logger.Info($"Main. Hidding border {windowInfo}");
+                    Logger.Info($"Main. Hiding border {windowInfo}");
 
                     borderRenderer.Hide();
                 }
