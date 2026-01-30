@@ -46,7 +46,7 @@ internal class BorderRenderer : IDisposable
         }
     }
 
-    public void Show(WindowInfo window)
+    public void Show(Window window)
     {
         Logger.Info($"BorderRenderer. Show border: {window.ToString()}\n\r");
 

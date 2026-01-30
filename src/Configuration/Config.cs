@@ -25,9 +25,10 @@ internal record class BorderConfig
     public uint Color { get; set; } = 0xFFFFA500;
     public int Width { get; set; } = 4;
     public int Offset { get; set; } = 0;
-    public int Radius { get; set; } = 0;
+    // todo: read from config file
+    public int ValidationInterval { get; set; } = 250;
 
-    public bool IsValid => Color > 0 && Width > 1;
+    public bool IsValid => Color > 0 && Width > 1 && ValidationInterval > 0;
 }
 
 internal record class WindowConfig

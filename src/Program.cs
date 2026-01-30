@@ -25,10 +25,17 @@ internal class Program
 
         var iconLoader = new IconLoader();
         using var borderRenderer = new BorderRenderer(config.Border);
+        using var windowValidator = new WindowValidator(config.Border.ValidationInterval);
         using var trayManager = new TrayManager(iconLoader);
-        using var activeMonitor = new ActiveWindowMonitor();
+        using var windowMonitor = new WindowMonitor();
 
-        activeMonitor.WindowChanged += async (sender, windowInfo) =>
+        windowValidator.WindowInvalidated += (sender, window) =>
+        {
+            Logger.Debug($"Main. Border invalidated for window: {window.ClassName}. Hiding border.");
+            borderRenderer.Hide();
+        };
+
+        windowMonitor.WindowChanged += async (sender, windowInfo) =>
         {
             // Cancel previous operation
             _cancellationTokenSource?.Cancel();
@@ -61,11 +68,12 @@ internal class Program
                     }
 
                     borderRenderer.Show(windowInfo);
+                    windowValidator.Start(windowInfo);
                 }
                 else
                 {
                     Logger.Info($"Main. Hiding border {windowInfo}");
-
+                    windowValidator.Stop();
                     borderRenderer.Hide();
                 }
             }
@@ -80,7 +88,7 @@ internal class Program
 
         };
 
-        activeMonitor.Start();
+        windowMonitor.Start();
 
         while (PInvoke.GetMessage(out var msg, HWND.Null, 0, 0))
         {
@@ -88,14 +96,14 @@ internal class Program
             PInvoke.DispatchMessage(msg);
         }       
 
-        activeMonitor.Stop();
+        windowMonitor.Stop();
 
         _cancellationTokenSource?.Dispose();
 
         return 0;
     }
 
-    public static async Task<bool> DelayIfWindowIsNotReady(WindowInfo window, int intervalDelay, int maxDelay, CancellationToken token = default)
+    public static async Task<bool> DelayIfWindowIsNotReady(Window window, int intervalDelay, int maxDelay, CancellationToken token = default)
     {
         for (int elapsed = 0; elapsed < maxDelay; elapsed += intervalDelay)
         {

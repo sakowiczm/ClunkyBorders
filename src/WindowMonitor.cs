@@ -7,9 +7,9 @@ using Windows.Win32.UI.WindowsAndMessaging;
 
 namespace ClunkyBorders;
 
-internal class ActiveWindowMonitor : IDisposable
+internal class WindowMonitor : IDisposable
 {
-    public event EventHandler<WindowInfo?>? WindowChanged;
+    public event EventHandler<Window?>? WindowChanged;
 
     private bool isStarted;
     private HWINEVENTHOOK eventHook;
@@ -22,11 +22,11 @@ internal class ActiveWindowMonitor : IDisposable
         {
             if (isStarted)
             {
-                Logger.Debug("ActiveWindowMonitor. Already started.");
+                Logger.Debug("WindowMonitor. Already started.");
                 return;
             }
 
-            Logger.Debug("ActiveWindowMonitor. Starting.");
+            Logger.Debug("WindowMonitor. Starting.");
 
             eventHook = PInvoke.SetWinEventHook(
                 PInvoke.EVENT_SYSTEM_FOREGROUND,
@@ -41,7 +41,7 @@ internal class ActiveWindowMonitor : IDisposable
 
             if (eventHook == IntPtr.Zero)
             {
-                Logger.Error($"ActiveWindowMonitor. Failed to set SetWinEventHook. Error code: {Marshal.GetLastWin32Error()}");
+                Logger.Error($"WindowMonitor. Failed to set SetWinEventHook. Error code: {Marshal.GetLastWin32Error()}");
                 return;
             }
 
@@ -55,7 +55,7 @@ internal class ActiveWindowMonitor : IDisposable
         }
         catch(Exception ex) 
         {
-            Logger.Error($"ActiveWindowMonitor. Error starting.", ex);
+            Logger.Error($"WindowMonitor. Error starting.", ex);
         }
     }
 
@@ -73,11 +73,11 @@ internal class ActiveWindowMonitor : IDisposable
             }
 
             isStarted = false;
-            Logger.Debug("ActiveWindowMonitor. Stopped.");
+            Logger.Debug("WindowMonitor. Stopped.");
         }
         catch (Exception ex)
         {
-            Logger.Error($"ActiveWindowMonitor. Error stopping.", ex);
+            Logger.Error($"WindowMonitor. Error stopping.", ex);
         }
     }
 
@@ -116,12 +116,12 @@ internal class ActiveWindowMonitor : IDisposable
                         // for whatever reasons active window that is not being closed may get those events 
                         if (!PInvoke.IsWindowVisible(hwnd) || !PInvoke.IsWindow(hwnd))
                         {
-                            Logger.Debug($"ActiveWindowMonitor. Active window destruction/hide event detected: {hwnd}, event: {GetEventName(@event)}");
+                            Logger.Debug($"WindowMonitor. Active window destruction/hide event detected: {hwnd}, event: {GetEventName(@event)}");
                             WindowChanged?.Invoke(this, null);
                         }
                         else
                         {
-                            Logger.Debug($"ActiveWindowMonitor. Suppressed border hide: window still visible and valid.");
+                            Logger.Debug($"WindowMonitor. Suppressed border hide: window still visible and valid.");
                         }
                         return;
                     }
@@ -143,25 +143,25 @@ internal class ActiveWindowMonitor : IDisposable
             {
                 if (window != null && !window.IsParent)
                 {
-                    Logger.Debug($"ActiveWindowMonitor. Ignoring non-parent window: {window.ClassName} - {window.Text}");
+                    Logger.Debug($"WindowMonitor. Ignoring non-parent window: {window.ClassName} - {window.Text}");
                 }
             }
 
         }
         catch (Exception ex)
         {
-            Logger.Error($"ActiveWindowMonitor. Error in OnWindowChange.", ex);
+            Logger.Error($"WindowMonitor. Error in OnWindowChange.", ex);
         }
     }
 
-    private WindowInfo? GetWindow(HWND hwnd)
+    private Window? GetWindow(HWND hwnd)
     {
         try
         {
             // Validate window handle is still valid
             if (!PInvoke.IsWindow(hwnd))
             {
-                Logger.Debug($"ActiveWindowMonitor. Window handle {hwnd} is no longer valid");
+                Logger.Debug($"WindowMonitor. Window handle {hwnd} is no longer valid");
                 return null;
             }
 
@@ -172,7 +172,7 @@ internal class ActiveWindowMonitor : IDisposable
             var isParent = IsParentWindow(hwnd);
             uint dpi = PInvoke.GetDpiForWindow(hwnd);
 
-            return new WindowInfo
+            return new Window
             {
                 Handle = hwnd,
                 ClassName = className,
@@ -185,7 +185,7 @@ internal class ActiveWindowMonitor : IDisposable
         }
         catch (Exception ex)
         {
-            Logger.Error($"ActiveWindowMonitor. Error getting window {hwnd} information.", ex);
+            Logger.Error($"WindowMonitor. Error getting window {hwnd} information.", ex);
             return null;
         }
     }
@@ -206,14 +206,14 @@ internal class ActiveWindowMonitor : IDisposable
             if (hResult.Succeeded)
                 return rect;
 
-            Logger.Error($"ActiveWindowMonitor. Error getting extended window ({hwnd}) rect. Error code: {Marshal.GetLastWin32Error()}.");
+            Logger.Error($"WindowMonitor. Error getting extended window ({hwnd}) rect. Error code: {Marshal.GetLastWin32Error()}.");
 
             // fallback
             var result = PInvoke.GetWindowRect(hwnd, out rect);
 
             if (result == 0)
             {
-                Logger.Error($"ActiveWindowMonitor. Error getting window ({hwnd}) rect. Error code: {Marshal.GetLastWin32Error()}.");
+                Logger.Error($"WindowMonitor. Error getting window ({hwnd}) rect. Error code: {Marshal.GetLastWin32Error()}.");
                 return default;
             }
 
@@ -221,7 +221,7 @@ internal class ActiveWindowMonitor : IDisposable
         }
         catch (Exception ex)
         {
-            Logger.Error($"ActiveWindowMonitor. Error getting window ({hwnd}) rect.", ex);
+            Logger.Error($"WindowMonitor. Error getting window ({hwnd}) rect.", ex);
             return default;
         }
     }
@@ -250,7 +250,7 @@ internal class ActiveWindowMonitor : IDisposable
         }
         catch (Exception ex)
         {
-            Logger.Error($"ActiveWindowMonitor. Error checking window parent.", ex);
+            Logger.Error($"WindowMonitor. Error checking window parent.", ex);
             return false;
         }
     }
@@ -264,7 +264,7 @@ internal class ActiveWindowMonitor : IDisposable
 
         if (result == 0)
         {
-            Logger.Error($"ActiveWindowMonitor. Error getting window state.");
+            Logger.Error($"WindowMonitor. Error getting window state.");
             return WindowState.Unknown;
         }
 
@@ -302,7 +302,7 @@ internal class ActiveWindowMonitor : IDisposable
         }
     }
 
-    private WindowInfo? GetCurrentActiveWindow()
+    private Window? GetCurrentActiveWindow()
     {
         try
         {
@@ -310,7 +310,7 @@ internal class ActiveWindowMonitor : IDisposable
 
             if (hwnd.IsNull)
             {
-                Logger.Error("ActiveWindowMonitor. No active window.");
+                Logger.Error("WindowMonitor. No active window.");
                 return null;
             }
 
@@ -319,7 +319,7 @@ internal class ActiveWindowMonitor : IDisposable
         }
         catch (Exception ex)
         {
-            Logger.Error("ActiveWindowMonitor. Error getting current active window.", ex);
+            Logger.Error("WindowMonitor. Error getting current active window.", ex);
             return null;
         }
     }
@@ -351,7 +351,7 @@ internal class ActiveWindowMonitor : IDisposable
         disposed = true;
     }
 
-    ~ActiveWindowMonitor()
+    ~WindowMonitor()
     {
         Dispose(false);
     }

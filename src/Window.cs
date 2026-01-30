@@ -5,7 +5,7 @@ using Windows.Win32.Graphics.Dwm;
 
 namespace ClunkyBorders;
 
-internal record WindowInfo
+internal record Window
 {
     public required HWND Handle { get; init; }
 
