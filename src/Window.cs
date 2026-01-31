@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.Graphics.Dwm;
+using Windows.Win32.UI.WindowsAndMessaging;
 
 namespace ClunkyBorders;
 
@@ -28,9 +29,9 @@ internal record Window
             return Rect;
 
         return RECT.FromXYWH(
-                Rect.X - size, 
+                Rect.X - size,
                 Rect.Y - size,
-                Rect.Width + 2 * size, 
+                Rect.Width + 2 * size,
                 Rect.Height + 2 * size);
     }
 
@@ -38,14 +39,6 @@ internal record Window
     {
         return State == WindowState.Normal && IsParent && !Rect.IsEmpty;
     }
-
-    public unsafe bool IsForegroundWindow()
-    {
-        var foregroundHandle = PInvoke.GetForegroundWindow();
-        return foregroundHandle == Handle;
-    }
-
-    public bool IsValidForBorder() => IsForegroundWindow() && IsWindowReady();
 
     public override string ToString()
     {
@@ -59,8 +52,6 @@ internal record Window
                     Rect: {Rect.left}, {Rect.top}, {Rect.right}, {Rect.bottom}
                 """;
     }
-
-    // todo: move more thosed here
 
     public unsafe bool IsWindowReady()
     {
@@ -89,6 +80,179 @@ internal record Window
         // If cloaked (non-zero), window is not ready
         return cloaked == 0;
     }
+
+    public unsafe bool IsForeground() => IsForeground(Handle);
+
+    internal static bool IsForeground(HWND hwnd) => PInvoke.GetForegroundWindow() == hwnd;
+
+    public bool IsValidForBorder() => IsForeground() && IsWindowReady();
+
+    public static Window? FromHandle(HWND hwnd)
+    {
+        try
+        {
+            if (!PInvoke.IsWindow(hwnd))
+            {
+                Logger.Debug($"Window. Window handle {hwnd} is no longer valid");
+                return null;
+            }
+
+            var className = GetClassName(hwnd);
+            var text = GetText(hwnd);
+            var rect = GetRect(hwnd);
+            var state = GetState(hwnd);
+            var isParent = IsParentWindow(hwnd);
+            uint dpi = PInvoke.GetDpiForWindow(hwnd);
+
+            return new Window
+            {
+                Handle = hwnd,
+                ClassName = className,
+                Text = text,
+                Rect = rect,
+                State = state,
+                IsParent = isParent,
+                DPI = dpi
+            };
+        }
+        catch (Exception ex)
+        {
+            Logger.Error($"Window. Error getting window {hwnd} information.", ex);
+            return null;
+        }
+    }
+
+    public static Window? GetForeground()
+    {
+        try
+        {
+            var hwnd = PInvoke.GetForegroundWindow();
+
+            if (hwnd.IsNull)
+            {
+                Logger.Error("Window. No active window.");
+                return null;
+            }
+
+            return FromHandle(hwnd);
+        }
+        catch (Exception ex)
+        {
+            Logger.Error("Window. Error getting current active window.", ex);
+            return null;
+        }
+    }
+
+    private static unsafe RECT GetRect(HWND hwnd)
+    {
+        try
+        {
+            RECT rect;
+
+            var hResult = PInvoke.DwmGetWindowAttribute(
+                hwnd,
+                DWMWINDOWATTRIBUTE.DWMWA_EXTENDED_FRAME_BOUNDS,
+                &rect,
+                (uint)sizeof(RECT)
+            );
+
+            if (hResult.Succeeded)
+                return rect;
+
+            Logger.Error($"Window. Error getting extended window ({hwnd}) rect. Error code: {Marshal.GetLastWin32Error()}.");
+
+            var result = PInvoke.GetWindowRect(hwnd, out rect);
+
+            if (result == 0)
+            {
+                Logger.Error($"Window. Error getting window ({hwnd}) rect. Error code: {Marshal.GetLastWin32Error()}.");
+                return default;
+            }
+
+            return rect;
+        }
+        catch (Exception ex)
+        {
+            Logger.Error($"Window. Error getting window ({hwnd}) rect.", ex);
+            return default;
+        }
+    }
+
+    private static bool IsParentWindow(HWND hwnd)
+    {
+        try
+        {
+            var rootWindow = PInvoke.GetAncestor(hwnd, GET_ANCESTOR_FLAGS.GA_ROOT);
+            if (rootWindow.IsNull)
+                return false;
+
+            if (rootWindow != hwnd)
+                return false;
+
+            var style = PInvoke.GetWindowLong(hwnd, WINDOW_LONG_PTR_INDEX.GWL_STYLE);
+            if ((style & (uint)WINDOW_STYLE.WS_POPUP) != 0 && (style & (uint)WINDOW_STYLE.WS_CAPTION) == 0)
+                return false;
+
+            var exStyle = PInvoke.GetWindowLong(hwnd, WINDOW_LONG_PTR_INDEX.GWL_EXSTYLE);
+            if ((exStyle & (uint)WINDOW_EX_STYLE.WS_EX_DLGMODALFRAME) != 0)
+                return false;
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Logger.Error($"Window. Error checking window parent.", ex);
+            return false;
+        }
+    }
+
+    private static WindowState GetState(HWND hwnd)
+    {
+        var placement = new WINDOWPLACEMENT();
+        placement.length = (uint)Marshal.SizeOf<WINDOWPLACEMENT>();
+
+        var result = PInvoke.GetWindowPlacement(hwnd, ref placement);
+
+        if (result == 0)
+        {
+            Logger.Error($"Window. Error getting window state.");
+            return WindowState.Unknown;
+        }
+
+        return (uint)placement.showCmd switch
+        {
+            0 => WindowState.Hiden,
+            1 => WindowState.Normal,
+            2 => WindowState.Minimized,
+            3 => WindowState.Maximized,
+            _ => WindowState.Unknown,
+        };
+    }
+
+    private static unsafe string GetClassName(HWND hwnd)
+    {
+        const int maxLength = 256;
+        var buffer = new char[maxLength];
+
+        fixed (char* pBuffer = buffer)
+        {
+            var length = PInvoke.GetClassName(hwnd, pBuffer, maxLength);
+            return length == 0 ? string.Empty : new string(pBuffer, 0, length);
+        }
+    }
+
+    private static unsafe string GetText(HWND hwnd)
+    {
+        const int maxLength = 256;
+        var buffer = new char[maxLength];
+
+        fixed (char* pBuffer = buffer)
+        {
+            var length = PInvoke.GetWindowText(hwnd, pBuffer, maxLength);
+            return length == 0 ? string.Empty : new string(pBuffer, 0, length);
+        }
+    }
+
 }
 
 enum WindowState

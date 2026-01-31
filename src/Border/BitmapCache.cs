@@ -37,7 +37,7 @@ internal class BitmapCache : IDisposable
         {
             pixelBuffer = cached.pixelBuffer;
             isCached = true;
-            Logger.Debug($"BitmapCache. Cache HIT for {width}�{height} @ {dpi} DPI");
+            Logger.Debug($"BitmapCache. Cache HIT for {width}×{height} @ {dpi} DPI");
             return cached.bitmap;
         }
 
@@ -54,7 +54,7 @@ internal class BitmapCache : IDisposable
         if (_cache.Count >= _maxSize)
         {
             var oldest = _cache.First();
-            Logger.Debug($"BitmapCache. Evicting {oldest.Key.width}�{oldest.Key.height} @ {oldest.Key.dpi} DPI");
+            Logger.Debug($"BitmapCache. Evicting {oldest.Key.width}×{oldest.Key.height} @ {oldest.Key.dpi} DPI");
             PInvoke.DeleteObject(oldest.Value.bitmap);
             _cache.Remove(oldest.Key);
         }
@@ -62,7 +62,7 @@ internal class BitmapCache : IDisposable
         _cache[key] = (newBitmap, newBuffer);
         pixelBuffer = newBuffer;
         isCached = false;
-        Logger.Debug($"BitmapCache. Cache MISS - created {width}�{height} @ {dpi} DPI (size: {_cache.Count})");
+        Logger.Debug($"BitmapCache. Cache MISS - created {width}×{height} @ {dpi} DPI (size: {_cache.Count})");
 
         return newBitmap;
     }

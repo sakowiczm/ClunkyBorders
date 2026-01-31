@@ -73,6 +73,8 @@ internal class ConfigManager
         uint color = 0;
         int offset = 0;
         bool enableBitmapCaching = true;  // Default to enabled
+        bool enableAnimations = false;    // Default to disabled
+        int animationDuration = 150;    // Default duration
 
         foreach (var line in lines)
         {
@@ -116,6 +118,20 @@ internal class ConfigManager
                                 enableBitmapCaching = cache;
                             }
                             break;
+
+                        case "enable_animations":
+                            if (bool.TryParse(value, out bool anim))
+                            {
+                                enableAnimations = anim;
+                            }
+                            break;
+
+                        case "animation_duration":
+                            if (int.TryParse(value, out int duration))
+                            {
+                                animationDuration = Math.Clamp(duration, 50, 1000);
+                            }
+                            break;
                     }
                 }
             }
@@ -126,7 +142,9 @@ internal class ConfigManager
             Width = width,
             Color = color,
             Offset = offset,
-            EnableBitmapCaching = enableBitmapCaching
+            EnableBitmapCaching = enableBitmapCaching,
+            EnableAnimations = enableAnimations,
+            AnimationDuration = animationDuration
         };
     }
 

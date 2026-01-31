@@ -29,6 +29,8 @@ internal record class BorderConfig
     public bool EnableBitmapCaching { get; set; } = true;
     // todo: read from config file - todo: move to WindowConfig
     public int ValidationInterval { get; set; } = 250;
+    public bool EnableAnimations { get; set; } = false;
+    public int AnimationDuration { get; set; } = 150;
 
     public bool IsValid => Color > 0 && Width > 1 && ValidationInterval > 0;
 }

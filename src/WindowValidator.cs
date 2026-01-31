@@ -48,7 +48,7 @@ internal class WindowValidator : IDisposable
             }
 
             // Check if the bordered window is still the foreground window
-            if (!_currentWindow.IsForegroundWindow())
+            if (!_currentWindow.IsForeground())
             {
                 Logger.Info($"WindowValidator. Window {_currentWindow.ClassName} is no longer foreground.");
 

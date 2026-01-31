@@ -21,6 +21,7 @@ internal class BorderRenderer : IDisposable
 
     private readonly BorderConfig borderConfiguration = null!;
     private readonly BitmapCache _bitmapCache = null!;
+    private readonly BorderAnimator _animator = null!;
 
     private bool disposed = false;
 
@@ -38,10 +39,13 @@ internal class BorderRenderer : IDisposable
         {
             this.borderConfiguration = borderConfig ?? throw new ArgumentNullException(nameof(borderConfig));
 
-            // Initialize bitmap cache
             _bitmapCache = new BitmapCache(
                 borderConfig.EnableBitmapCaching,
                 maxSize: 20);
+
+            _animator = new BorderAnimator(
+                borderConfig.EnableAnimations,
+                borderConfig.AnimationDuration);
 
             EnableDpiAwarness();
 
@@ -58,33 +62,49 @@ internal class BorderRenderer : IDisposable
         Logger.Info($"BorderRenderer. Show border: {window.ToString()}\n\r");
 
         if (overlayWindow.IsNull)
-        {
             return;
-        }
 
         var overlayRect = window.GetOverlayRect(borderConfiguration.Offset);
 
-        DrawBorder(overlayRect.Width, overlayRect.Height, window.DPI);
+        _animator.CancelCurrentAnimation();
 
-        // Use window.Handle instead of TOPMOST - that will get rid of border drawing over dialog boxes
-        // but will introduce issue with border color - when active window shadow will be drawn on top of 
-        // our border and color will be mutted and slighly different for different windows
+        _ = ShowWithAnimationAsync(window, overlayRect);
+    }
+
+    private async Task ShowWithAnimationAsync(Window window, RECT overlayRect)
+    {
+        // Position window first
         PInvoke.SetWindowPos(
             overlayWindow,
-            HWND.HWND_TOPMOST, 
+            HWND.HWND_TOPMOST,
             overlayRect.X, overlayRect.Y, overlayRect.Width, overlayRect.Height,
-            SET_WINDOW_POS_FLAGS.SWP_NOACTIVATE | SET_WINDOW_POS_FLAGS.SWP_SHOWWINDOW);
+            SET_WINDOW_POS_FLAGS.SWP_NOACTIVATE);
 
         if (!isWindowVisible)
         {
             PInvoke.ShowWindow(overlayWindow, SHOW_WINDOW_CMD.SW_SHOWNOACTIVATE);
             isWindowVisible = true;
+        }
 
-            Logger.Debug($"""
-                          BorderRenderer. Border is shown. 
-                            Original: {window.Rect.X}, {window.Rect.Y}, {window.Rect.Width}, {window.Rect.Height}
-                            Adjusted: {overlayRect.X}, {overlayRect.Y}, {overlayRect.Width}, {overlayRect.Height}
-                         """);
+        try
+        {
+            await _animator.FadeInAsync(async (alpha, isComplete) =>
+            {
+                DrawBorder(overlayRect.Width, overlayRect.Height, window.DPI, alpha);
+
+                if (isComplete)
+                {
+                    Logger.Debug($"""
+                                  BorderRenderer. Border shown. 
+                                    Original: {window.Rect.X}, {window.Rect.Y}, {window.Rect.Width}, {window.Rect.Height}
+                                    Adjusted: {overlayRect.X}, {overlayRect.Y}, {overlayRect.Width}, {overlayRect.Height}
+                                 """);
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            Logger.Error("BorderRenderer. Error during show animation.", ex);
         }
     }
 
@@ -101,22 +121,48 @@ internal class BorderRenderer : IDisposable
         if(!isWindowVisible || overlayWindow.IsNull)
         {
             Logger.Warning("BorderRenderer. Cant hide border as it is not visible.");
+            return;
         }
 
+        _animator.CancelCurrentAnimation();
+        _ = HideWithAnimationAsync();
+    }
+
+    private async Task HideWithAnimationAsync()
+    {
         try
         {
+            // Get current window dimensions for drawing during fade-out
+            RECT rect;
+            PInvoke.GetWindowRect(overlayWindow, out rect);
+            var width = rect.right - rect.left;
+            var height = rect.bottom - rect.top;
+            var dpi = PInvoke.GetDpiForWindow(overlayWindow);
+
+            await _animator.FadeOutAsync(async (alpha, isComplete) =>
+            {
+                DrawBorder(width, height, dpi, alpha);
+            });
+
+            // Finally hide the window
             PInvoke.ShowWindow(overlayWindow, SHOW_WINDOW_CMD.SW_HIDE);
             isWindowVisible = false;
 
-            Logger.Debug("BorderRenderer. Border is hidden.");
+            Logger.Debug("BorderRenderer. Border faded out and hidden.");
+        }
+        catch (OperationCanceledException)
+        {
+            // Animation cancelled - hide immediately
+            PInvoke.ShowWindow(overlayWindow, SHOW_WINDOW_CMD.SW_HIDE);
+            isWindowVisible = false;
         }
         catch (Exception ex)
         {
-            Logger.Error($"BorderRenderer. Error hiding border.", ex);
+            Logger.Error("BorderRenderer. Error during hide animation.", ex);
         }
     }
 
-    private unsafe void DrawBorder(int width, int height, uint dpi)
+    private unsafe void DrawBorder(int width, int height, uint dpi, byte alpha = 255)
     {
         try
         {
@@ -140,7 +186,6 @@ internal class BorderRenderer : IDisposable
                 {
                     // Get or create cached bitmap
                     var hBitmap = GetOrCreateBitmap(width, height, dpi, memoryDc, out void* pBits, out bool isCached);
-
                     if (hBitmap.IsNull)
                     {
                         Logger.Error($"BorderRenderer. Failed to create DIB section. Error code: {Marshal.GetLastWin32Error()}");
@@ -161,7 +206,7 @@ internal class BorderRenderer : IDisposable
                     {
                         BlendOp = 0x00,
                         BlendFlags = 0,
-                        SourceConstantAlpha = 255,
+                        SourceConstantAlpha = alpha,
                         AlphaFormat = 0x01
                     };
 
@@ -177,7 +222,7 @@ internal class BorderRenderer : IDisposable
                     if (!borderConfiguration.EnableBitmapCaching)
                     {
                         PInvoke.DeleteObject(hBitmap);
-                    }                    
+                    }
                 }
                 finally
                 {
@@ -194,7 +239,6 @@ internal class BorderRenderer : IDisposable
             Logger.Error("BorderRenderer. Error during RenderBorder.", ex);
         }
     }
-
     private static float GetScaleFactor(uint dpi) => dpi == 0 ? 1 : (float)dpi / DEFAULT_SCREEN_DPI;
 
     private unsafe void SetPixels(int width, int height, uint dpi, uint* pixels)
@@ -374,6 +418,7 @@ internal class BorderRenderer : IDisposable
         if (disposing)
         {
             _bitmapCache?.Dispose();
+            _animator?.Dispose();
         }
 
         Destroy();

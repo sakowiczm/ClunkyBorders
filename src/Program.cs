@@ -84,9 +84,9 @@ internal class Program
             {
                 // Expected - new window event came in
             }
-            catch
+            catch (Exception ex)
             {
-                Logger.Error($"Main. Error handling WindowChanged event.");
+                Logger.Error($"Main. Error handling WindowChanged event.", ex);
             }
 
         };
