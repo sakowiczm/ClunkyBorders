@@ -28,7 +28,7 @@ internal class Program
 
         var iconLoader = new IconLoader();
         using var borderRenderer = new BorderRenderer(config.Border);
-        using var windowValidator = new WindowValidator(config.Border.ValidationInterval);
+        using var windowValidator = new WindowValidator(config.Window.ValidationInterval);
         using var trayManager = new TrayManager(iconLoader);
         using var windowMonitor = new WindowMonitor();
 
@@ -49,9 +49,9 @@ internal class Program
             {
                 if (ct.IsCancellationRequested) return;
 
-                if (windowInfo != null && config.Window.ExcludedClassNames.Contains(windowInfo.ClassName))
+                if (windowInfo != null && IsWindowExcluded(windowInfo, config.Window))
                 {
-                    Logger.Debug($"Main. Excluding window. {windowInfo}");
+                    Logger.Debug($"Main. Excluding window by exclusion rule. {windowInfo}");
                     return;
                 }
 
@@ -97,13 +97,32 @@ internal class Program
         {
             PInvoke.TranslateMessage(msg);
             PInvoke.DispatchMessage(msg);
-        }       
+        }      
 
         windowMonitor.Stop();
 
         _cancellationTokenSource?.Dispose();
 
         return 0;
+    }
+
+    private static bool IsWindowExcluded(Window windowInfo, WindowConfig config)
+    {
+        return config.Exclusions.Any(ex =>
+        {
+            bool classMatch = !string.IsNullOrEmpty(ex.ClassName) &&
+                string.Equals(ex.ClassName, windowInfo.ClassName, StringComparison.OrdinalIgnoreCase);
+            bool textMatch = !string.IsNullOrEmpty(ex.Text) &&
+                string.Equals(ex.Text, windowInfo.Text, StringComparison.OrdinalIgnoreCase);
+
+            if (!string.IsNullOrEmpty(ex.ClassName) && !string.IsNullOrEmpty(ex.Text))
+                return classMatch && textMatch;
+            if (!string.IsNullOrEmpty(ex.ClassName))
+                return classMatch;
+            if (!string.IsNullOrEmpty(ex.Text))
+                return textMatch;
+            return false;
+        });
     }
 
     public static async Task<bool> DelayIfWindowIsNotReady(Window window, int intervalDelay, int maxDelay, CancellationToken token = default)

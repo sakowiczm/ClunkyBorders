@@ -21,32 +21,25 @@ internal record class Config
 
 internal record class BorderConfig
 {
-    public uint Color { get; set; } = 0xFFFFA500;
-    public int Width { get; set; } = 4;
-    public int Offset { get; set; } = 0;
+    public uint Color { get; set; }
+    public int Width { get; set; }
+    public int Offset { get; set; }
+    public bool EnableBitmapCaching { get; set; }
+    public bool EnableAnimations { get; set; }
+    public int AnimationDuration { get; set; }
 
-    // todo: move to other config class?
-    public bool EnableBitmapCaching { get; set; } = true;
-    // todo: read from config file - todo: move to WindowConfig
-    public int ValidationInterval { get; set; } = 250;
-    public bool EnableAnimations { get; set; } = false;
-    public int AnimationDuration { get; set; } = 150;
+    public bool IsValid => Color > 0 && Width > 1 && AnimationDuration > 0;
+}
 
-    public bool IsValid => Color > 0 && Width > 1 && ValidationInterval > 0;
+internal record class WindowExclusion
+{
+    public string? ClassName { get; set; }
+    public string? Text { get; set; }
 }
 
 internal record class WindowConfig
 {
-    public HashSet<string> ExcludedClassNames = new HashSet<string>()
-    {
-        "Windows.UI.Core.CoreWindow",               // Windows Start menu
-        "Shell_TrayWnd",                            // Windows taskbar
-        "TopLevelWindowForOverflowXamlIsland",      // Windows tray show hidden icons
-        "XamlExplorerHostIslandWindow",             // Windows Task Swicher
-        "ForegroundStaging",                        // Windows Task Swicher - temporary window
-        "Progman",                                  // Program Manager - e.g when clicking a desktop
-        "WorkerW"                                   // Windows Desktop
-    };
-
-    public bool IsValid => true;
+    public List<WindowExclusion> Exclusions { get; set; } = new();
+    public int ValidationInterval { get; set; }
+    public bool IsValid => ValidationInterval > 0;
 }

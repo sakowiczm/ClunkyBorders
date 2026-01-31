@@ -5,3 +5,31 @@ color = 0xFFFFA500
 enable_bitmap_caching = true
 enable_animations = true
 animation_duration = 150
+
+[Window]
+validation_interval = 250
+
+[[Window.excluded]]
+class = "Windows.UI.Core.CoreWindow"
+
+[[Window.excluded]]
+class = "Shell_TrayWnd"
+
+[[Window.excluded]]
+class = "TopLevelWindowForOverflowXamlIsland"
+
+[[Window.excluded]]
+class = "XamlExplorerHostIslandWindow"
+
+[[Window.excluded]]
+class = "ForegroundStaging"
+
+[[Window.excluded]]
+class = "Progman"
+
+[[Window.excluded]]
+class = "WorkerW"
+
+[[Window.excluded]]
+class = "XamlWindow"
+text = "Snipping Tool Overlay"

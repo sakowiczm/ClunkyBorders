@@ -48,8 +48,81 @@ internal class ConfigManager
             .ToArray();
 
         var borderConfig = GetBorderConfig(lines);
+        var windowConfig = GetWindowConfig(lines);
+        return new Config(borderConfig, windowConfig);
+    }
 
-        return new Config(borderConfig, new WindowConfig());
+    private static WindowConfig GetWindowConfig(string[] lines)
+    {
+        bool isWindowSection = false;
+        bool isExclusionSection = false;
+        var exclusions = new List<WindowExclusion>();
+        int validationInterval = 250;
+        WindowExclusion? currentExclusion = null;
+
+        foreach (var line in lines)
+        {
+            if (line.StartsWith("[[") && line.EndsWith("]]"))
+            {
+                var sectionName = line.Substring(2, line.Length - 4).Trim();
+                isExclusionSection = sectionName.Equals("window.excluded", StringComparison.OrdinalIgnoreCase);
+                if (isExclusionSection)
+                {
+                    currentExclusion = new WindowExclusion();
+                    exclusions.Add(currentExclusion);
+                }
+                continue;
+            }
+            if (line.StartsWith("[") && line.EndsWith("]") && !line.StartsWith("[["))
+            {
+                // New section, not an exclusion
+                isExclusionSection = false;
+                isWindowSection = line.Substring(1, line.Length - 2).Trim().Equals("window", StringComparison.OrdinalIgnoreCase);
+                continue;
+            }
+
+            if (isWindowSection && !isExclusionSection)
+            {
+                var index = line.IndexOf("=");
+                if (index > 0)
+                {
+                    string key = line.Substring(0, index).Trim();
+                    string value = line.Substring(++index).Trim().Trim('"');
+
+                    switch (key.ToLowerInvariant())
+                    {
+                        case "validation_interval":
+                            if (int.TryParse(value, out int interval))
+                                validationInterval = interval;
+                            break;
+                    }
+                }
+            }
+            else if (isExclusionSection && currentExclusion != null)
+            {
+                var index = line.IndexOf("=");
+                if (index > 0)
+                {
+                    string key = line.Substring(0, index).Trim();
+                    string value = line.Substring(++index).Trim().Trim('"');
+                    switch (key.ToLowerInvariant())
+                    {
+                        case "class":
+                            currentExclusion.ClassName = value;
+                            break;
+                        case "text":
+                            currentExclusion.Text = value;
+                            break;
+                    }
+                }
+            }
+        }
+
+        return new WindowConfig
+        {
+            Exclusions = exclusions,
+            ValidationInterval = validationInterval
+        };
     }
 
     private static string RemoveComments(string line)
