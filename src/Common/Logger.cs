@@ -1,6 +1,6 @@
 ﻿using System.Threading.Channels;
 
-namespace ClunkyBorders;
+namespace ClunkyBorders.Common;
 
 internal static class Logger
 {

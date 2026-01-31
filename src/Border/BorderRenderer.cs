@@ -1,4 +1,5 @@
-﻿using ClunkyBorders.Configuration;
+﻿using ClunkyBorders.Common;
+using ClunkyBorders.Configuration;
 using System.Runtime.InteropServices;
 using Windows.Win32;
 using Windows.Win32.Foundation;
@@ -7,7 +8,7 @@ using Windows.Win32.Graphics.Gdi;
 using Windows.Win32.UI.HiDpi;
 using Windows.Win32.UI.WindowsAndMessaging;
 
-namespace ClunkyBorders;
+namespace ClunkyBorders.Border;
 
 internal class BorderRenderer : IDisposable
 {
@@ -19,6 +20,7 @@ internal class BorderRenderer : IDisposable
     private bool isWindowVisible = false;
 
     private readonly BorderConfig borderConfiguration = null!;
+    private readonly BitmapCache _bitmapCache = null!;
 
     private bool disposed = false;
 
@@ -35,6 +37,11 @@ internal class BorderRenderer : IDisposable
         try
         {
             this.borderConfiguration = borderConfig ?? throw new ArgumentNullException(nameof(borderConfig));
+
+            // Initialize bitmap cache
+            _bitmapCache = new BitmapCache(
+                borderConfig.EnableBitmapCaching,
+                maxSize: 20);
 
             EnableDpiAwarness();
 
@@ -131,64 +138,46 @@ internal class BorderRenderer : IDisposable
 
                 try
                 {
-                    var bmi = new BITMAPINFO
-                    {
-                        bmiHeader = new BITMAPINFOHEADER
-                        {
-                            biSize = (uint)Marshal.SizeOf<BITMAPINFOHEADER>(),
-                            biWidth = width,
-                            biHeight = -height, // top-down bitmap
-                            biPlanes = 1,
-                            biBitCount = 32,
-                            biCompression = 0,
-                            biSizeImage = 0,
-                            biXPelsPerMeter = 0,
-                            biYPelsPerMeter = 0,
-                            biClrUsed = 0,
-                            biClrImportant = 0
-                        }
-                    };
+                    // Get or create cached bitmap
+                    var hBitmap = GetOrCreateBitmap(width, height, dpi, memoryDc, out void* pBits, out bool isCached);
 
-                    void* pBits;
-
-                    // Device independent bitmap
-                    var hBitmap = PInvoke.CreateDIBSection(memoryDc, &bmi, 0, &pBits, HANDLE.Null, 0);
                     if (hBitmap.IsNull)
                     {
                         Logger.Error($"BorderRenderer. Failed to create DIB section. Error code: {Marshal.GetLastWin32Error()}");
                         return;
                     }
 
-                    try
+                    var oldBitmap = PInvoke.SelectObject(memoryDc, hBitmap);
+
+                    // Only redraw pixels if this is a new bitmap (not from cache)
+                    if (!isCached)
                     {
-                        var oldBitmap = PInvoke.SelectObject(memoryDc, hBitmap);
-
                         SetPixels(width, height, dpi, (uint*)pBits);
-
-                        var size = new SIZE { cx = width, cy = height };
-                        var winPtSrc = new System.Drawing.Point(0, 0);
-                        var blend = new BLENDFUNCTION
-                        {
-                            BlendOp = 0x00,
-                            BlendFlags = 0,
-                            SourceConstantAlpha = 255,
-                            AlphaFormat = 0x01
-                        };
-
-                        if (!PInvoke.UpdateLayeredWindow(overlayWindow, default, null, &size, memoryDc,
-                            &winPtSrc, new COLORREF(0), &blend, UPDATE_LAYERED_WINDOW_FLAGS.ULW_ALPHA))
-                        {
-                            Logger.Error($"BorderRenderer. UpdateLayeredWindow failed. Error code: {Marshal.GetLastWin32Error()}");
-                        }
-
-                        PInvoke.SelectObject(memoryDc, oldBitmap);
-
                     }
-                    finally
+
+                    var size = new SIZE { cx = width, cy = height };
+                    var winPtSrc = new System.Drawing.Point(0, 0);
+                    var blend = new BLENDFUNCTION
+                    {
+                        BlendOp = 0x00,
+                        BlendFlags = 0,
+                        SourceConstantAlpha = 255,
+                        AlphaFormat = 0x01
+                    };
+
+                    if (!PInvoke.UpdateLayeredWindow(overlayWindow, default, null, &size, memoryDc,
+                        &winPtSrc, new COLORREF(0), &blend, UPDATE_LAYERED_WINDOW_FLAGS.ULW_ALPHA))
+                    {
+                        Logger.Error($"BorderRenderer. UpdateLayeredWindow failed. Error code: {Marshal.GetLastWin32Error()}");
+                    }
+
+                    PInvoke.SelectObject(memoryDc, oldBitmap);
+
+                    // Delete bitmap if caching is disabled, otherwise keep in cache
+                    if (!borderConfiguration.EnableBitmapCaching)
                     {
                         PInvoke.DeleteObject(hBitmap);
-                    }
-                    
+                    }                    
                 }
                 finally
                 {
@@ -317,6 +306,51 @@ internal class BorderRenderer : IDisposable
         return wHwnd;
     }
 
+    private unsafe HBITMAP GetOrCreateBitmap(int width, int height, uint dpi, HDC memoryDc, out void* pBits, out bool isCached)
+    {
+        var bitmap = _bitmapCache.GetOrCreate(width, height, dpi, memoryDc,
+            CreateBitmap,
+            out var pixelBuffer,
+            out isCached);
+
+        pBits = (void*)pixelBuffer;
+        return bitmap;
+    }
+
+    private unsafe (HBITMAP bitmap, IntPtr pixelBuffer) CreateBitmap(int width, int height, uint dpi, HDC memoryDc)
+    {
+        var bmi = new BITMAPINFO
+        {
+            bmiHeader = new BITMAPINFOHEADER
+            {
+                biSize = (uint)Marshal.SizeOf<BITMAPINFOHEADER>(),
+                biWidth = width,
+                biHeight = -height, // top-down bitmap
+                biPlanes = 1,
+                biBitCount = 32,
+                biCompression = 0,
+                biSizeImage = 0,
+                biXPelsPerMeter = 0,
+                biYPelsPerMeter = 0,
+                biClrUsed = 0,
+                biClrImportant = 0
+            }
+        };
+
+        void* bits;
+
+        // Device independent bitmap
+        var hBitmap = PInvoke.CreateDIBSection(memoryDc, &bmi, 0, &bits, HANDLE.Null, 0);
+
+        if (hBitmap.IsNull)
+        {
+            Logger.Error($"BorderRenderer. Failed to create DIB section. Error code: {Marshal.GetLastWin32Error()}");
+            return (default, IntPtr.Zero);
+        }
+
+        return (hBitmap, (IntPtr)bits);
+    }
+
     private void Destroy()
     {
         var success = PInvoke.DestroyWindow(overlayWindow);
@@ -336,6 +370,11 @@ internal class BorderRenderer : IDisposable
     {
         if (disposed)
             return;
+
+        if (disposing)
+        {
+            _bitmapCache?.Dispose();
+        }
 
         Destroy();
 

@@ -1,4 +1,4 @@
-﻿namespace ClunkyBorders;
+﻿namespace ClunkyBorders.Common;
 
 internal class InstanceManager : IDisposable
 {

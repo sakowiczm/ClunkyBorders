@@ -1,10 +1,11 @@
-﻿using System.Runtime.InteropServices;
+﻿using ClunkyBorders.Common;
+using System.Runtime.InteropServices;
 using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.UI.Shell;
 using Windows.Win32.UI.WindowsAndMessaging;
 
-namespace ClunkyBorders;
+namespace ClunkyBorders.Tray;
 
 internal class TrayManager : IDisposable
 {

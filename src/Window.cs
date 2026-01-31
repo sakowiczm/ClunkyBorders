@@ -1,4 +1,5 @@
-﻿using System.Runtime.InteropServices;
+﻿using ClunkyBorders.Common;
+using System.Runtime.InteropServices;
 using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.Graphics.Dwm;
@@ -58,6 +59,8 @@ internal record Window
                     Rect: {Rect.left}, {Rect.top}, {Rect.right}, {Rect.bottom}
                 """;
     }
+
+    // todo: move more thosed here
 
     public unsafe bool IsWindowReady()
     {

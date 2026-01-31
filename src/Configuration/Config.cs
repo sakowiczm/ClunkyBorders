@@ -16,7 +16,6 @@ internal record class Config
         Border = border;
         Window = window;
     }
-
     public bool IsValid => Border.IsValid && Window.IsValid;
 }
 
@@ -25,7 +24,10 @@ internal record class BorderConfig
     public uint Color { get; set; } = 0xFFFFA500;
     public int Width { get; set; } = 4;
     public int Offset { get; set; } = 0;
-    // todo: read from config file
+
+    // todo: move to other config class?
+    public bool EnableBitmapCaching { get; set; } = true;
+    // todo: read from config file - todo: move to WindowConfig
     public int ValidationInterval { get; set; } = 250;
 
     public bool IsValid => Color > 0 && Width > 1 && ValidationInterval > 0;

@@ -1,8 +1,10 @@
-﻿namespace ClunkyBorders;
+﻿using ClunkyBorders.Common;
+
+namespace ClunkyBorders;
 
 /// <summary>
-/// Not every window can get border - even if in Admin Mode - 
-/// just hide border if border is not present on active window.
+/// Not every window can get border - even with evevated privileges.
+/// Just hide border if it is not present on active window.
 /// </summary>
 internal class WindowValidator : IDisposable
 {

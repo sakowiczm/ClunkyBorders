@@ -1,4 +1,5 @@
-﻿using System.Globalization;
+﻿using ClunkyBorders.Common;
+using System.Globalization;
 
 namespace ClunkyBorders.Configuration;
 
@@ -71,6 +72,7 @@ internal class ConfigManager
         int width = 0;
         uint color = 0;
         int offset = 0;
+        bool enableBitmapCaching = true;  // Default to enabled
 
         foreach (var line in lines)
         {
@@ -107,6 +109,13 @@ internal class ConfigManager
                                 offset = g;
                             }
                             break;
+
+                        case "enable_bitmap_caching":
+                            if (bool.TryParse(value, out bool cache))
+                            {
+                                enableBitmapCaching = cache;
+                            }
+                            break;
                     }
                 }
             }
@@ -116,7 +125,8 @@ internal class ConfigManager
         {
             Width = width,
             Color = color,
-            Offset = offset
+            Offset = offset,
+            EnableBitmapCaching = enableBitmapCaching
         };
     }
 

@@ -1,5 +1,8 @@
 ﻿using ClunkyBorders;
+using ClunkyBorders.Border;
+using ClunkyBorders.Common;
 using ClunkyBorders.Configuration;
+using ClunkyBorders.Tray;
 using Windows.Win32;
 using Windows.Win32.Foundation;
 
