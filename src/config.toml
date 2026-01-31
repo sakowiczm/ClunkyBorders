@@ -1,10 +1,10 @@
 [Border]
 width = 6
-offset = 5
+offset = 3
 color = 0xFFFFA500
 enable_bitmap_caching = true
 enable_animations = true
-animation_duration = 150
+animation_duration = 200
 
 [Window]
 validation_interval = 250
