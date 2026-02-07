@@ -14,6 +14,8 @@ internal class WindowValidator : IDisposable
     private Window? _currentWindow = null;
     private Timer? _validationTimer;
     private bool _disposed = false;
+    private bool _isRunning = false;
+    private readonly object _lock = new object();
 
     public WindowValidator(int validationInterval = 250)
     {
@@ -25,38 +27,62 @@ internal class WindowValidator : IDisposable
 
     public void Start(Window window)
     {
-        _currentWindow = window;
-        _validationTimer?.Change(_validationInterval, _validationInterval);
-        Logger.Debug($"WindowValidator. Started monitoring window: {window.ClassName}");
+        lock (_lock)
+        {
+            _currentWindow = window;
+            _isRunning = true;
+            _validationTimer?.Change(_validationInterval, _validationInterval);
+            Logger.Debug($"WindowValidator. Started monitoring window: {window.ClassName}");
+        }
     }
 
     public void Stop()
     {
-        _validationTimer?.Change(Timeout.Infinite, Timeout.Infinite);
-        _currentWindow = null;
-        Logger.Debug("WindowValidator. Stopped monitoring");
+        lock (_lock)
+        {
+            _isRunning = false;
+            _validationTimer?.Change(Timeout.Infinite, Timeout.Infinite);
+            _currentWindow = null;
+            Logger.Debug("WindowValidator. Stopped monitoring");
+        }
     }
 
     private void ValidateBorderStillValid(object? state)
     {
         try
         {
-            // If no window is being monitored, nothing to validate
-            if (_currentWindow == null)
+            Window? windowToValidate;
+
+            lock (_lock)
             {
-                return;
+                // If validator is not running or no window is being monitored, nothing to validate
+                if (!_isRunning || _currentWindow == null)
+                {
+                    return;
+                }
+
+                windowToValidate = _currentWindow;
             }
 
-            // Check if the bordered window is still the foreground window
-            if (!_currentWindow.IsForeground())
+            // Check if the bordered window is still the foreground window (outside lock to avoid blocking)
+            if (!windowToValidate.IsForeground())
             {
-                Logger.Info($"WindowValidator. Window {_currentWindow.ClassName} is no longer foreground.");
+                Logger.Info($"WindowValidator. Window {windowToValidate.ClassName} is no longer foreground.");
 
-                var window = _currentWindow;
-                Stop();
+                // Double-check we're still running and monitoring the same window
+                lock (_lock)
+                {
+                    if (!_isRunning || _currentWindow?.Handle != windowToValidate.Handle)
+                    {
+                        Logger.Debug($"WindowValidator. Validation cancelled - window changed or validator stopped.");
+                        return;
+                    }
+
+                    Stop();
+                }
 
                 // Notify subscribers that border is no longer valid
-                WindowInvalidated?.Invoke(this, window);
+                WindowInvalidated?.Invoke(this, windowToValidate);
             }
         }
         catch (Exception ex)

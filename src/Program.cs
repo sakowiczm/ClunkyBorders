@@ -9,6 +9,8 @@ using Windows.Win32.Foundation;
 internal class Program
 {
     private static CancellationTokenSource? _cancellationTokenSource;
+    private static HWND _currentBorderedWindow = HWND.Null;
+    private static readonly object _borderStateLock = new object();
 
     private static int Main(string[] args)
     {
@@ -18,7 +20,7 @@ internal class Program
 
         using var instanceManager = new InstanceManager();
 
-        if(!instanceManager.IsSingleInstance())
+        if (!instanceManager.IsSingleInstance())
         {
             Logger.Warning("Another instance is already running. Exiting.");
             return 1;
@@ -32,10 +34,25 @@ internal class Program
         using var trayManager = new TrayManager(iconLoader);
         using var windowMonitor = new WindowMonitor();
 
-        windowValidator.WindowInvalidated += (sender, window) =>
+        windowValidator.WindowInvalidated += async (sender, window) =>
         {
+            // Only hide if this is the window that currently has the border
+            lock (_borderStateLock)
+            {
+                if (_currentBorderedWindow != window.Handle)
+                {
+                    Logger.Debug($"Main. Border invalidated for window: {window.ClassName}, but border is for different window. Ignoring.");
+                    return;
+                }
+            }
+
             Logger.Debug($"Main. Border invalidated for window: {window.ClassName}. Hiding border.");
-            borderRenderer.Hide();
+            await borderRenderer.Hide();
+
+            lock (_borderStateLock)
+            {
+                _currentBorderedWindow = HWND.Null;
+            }
         };
 
         windowMonitor.WindowChanged += async (sender, windowInfo) =>
@@ -58,7 +75,7 @@ internal class Program
                 if (windowInfo != null && windowInfo.CanHaveBorder())
                 {
                     // todo: describe / add to configuration
-                    await DelayIfWindowIsNotReady(windowInfo, 30, 700);
+                    await DelayIfWindowIsNotReady(windowInfo, 30, 700, ct);
 
                     if (ct.IsCancellationRequested) return;
 
@@ -70,14 +87,28 @@ internal class Program
                         return;
                     }
 
-                    borderRenderer.Show(windowInfo);
+                    // Stop validator before showing new border to prevent old validator from hiding new border
+                    windowValidator.Stop();
+
+                    await borderRenderer.Show(windowInfo);
+
+                    lock (_borderStateLock)
+                    {
+                        _currentBorderedWindow = windowInfo.Handle;
+                    }
+
                     windowValidator.Start(windowInfo);
                 }
                 else
                 {
                     Logger.Info($"Main. Hiding border {windowInfo}");
                     windowValidator.Stop();
-                    borderRenderer.Hide();
+                    await borderRenderer.Hide();
+
+                    lock (_borderStateLock)
+                    {
+                        _currentBorderedWindow = HWND.Null;
+                    }
                 }
             }
             catch (OperationCanceledException)
@@ -97,7 +128,7 @@ internal class Program
         {
             PInvoke.TranslateMessage(msg);
             PInvoke.DispatchMessage(msg);
-        }      
+        }
 
         windowMonitor.Stop();
 

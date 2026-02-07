@@ -14,7 +14,7 @@ internal class BorderRenderer : IDisposable
 {
     private const string OverlayWindowClassName = "ClunkyBordersOverlayClass";
     private const string OverlayWindowName = "ClunkyBordersOverlayWindow";
-    private const int DEFAULT_SCREEN_DPI = 96; // 100%       
+    private const int DEFAULT_SCREEN_DPI = 96; // 100%
 
     private HWND overlayWindow;
     private bool isWindowVisible = false;
@@ -22,6 +22,7 @@ internal class BorderRenderer : IDisposable
     private readonly BorderConfig borderConfiguration = null!;
     private readonly BitmapCache _bitmapCache = null!;
     private readonly BorderAnimator _animator = null!;
+    private readonly SemaphoreSlim _operationLock = new SemaphoreSlim(1, 1);
 
     private bool disposed = false;
 
@@ -57,7 +58,7 @@ internal class BorderRenderer : IDisposable
         }
     }
 
-    public void Show(Window window)
+    public async Task Show(Window window)
     {
         Logger.Info($"BorderRenderer. Show border: {window.ToString()}\n\r");
 
@@ -66,9 +67,17 @@ internal class BorderRenderer : IDisposable
 
         var overlayRect = window.GetOverlayRect(borderConfiguration.Offset);
 
-        _animator.CancelCurrentAnimation();
-
-        _ = ShowWithAnimationAsync(window, overlayRect);
+        // Acquire lock to serialize show/hide operations
+        await _operationLock.WaitAsync();
+        try
+        {
+            _animator.CancelCurrentAnimation();
+            await ShowWithAnimationAsync(window, overlayRect);
+        }
+        finally
+        {
+            _operationLock.Release();
+        }
     }
 
     private async Task ShowWithAnimationAsync(Window window, RECT overlayRect)
@@ -85,6 +94,16 @@ internal class BorderRenderer : IDisposable
             PInvoke.ShowWindow(overlayWindow, SHOW_WINDOW_CMD.SW_SHOWNOACTIVATE);
             isWindowVisible = true;
         }
+
+        // // Re-assert z-order after showing to ensure border stays on top
+        // // This handles cases where the target window's activation reorders topmost windows
+        // PInvoke.SetWindowPos(
+        //     overlayWindow,
+        //     HWND.HWND_TOPMOST,
+        //     0, 0, 0, 0,
+        //     SET_WINDOW_POS_FLAGS.SWP_NOACTIVATE |
+        //     SET_WINDOW_POS_FLAGS.SWP_NOMOVE |
+        //     SET_WINDOW_POS_FLAGS.SWP_NOSIZE);
 
         try
         {
@@ -116,16 +135,32 @@ internal class BorderRenderer : IDisposable
     //  border is drawn partially outside partially inside the active window e.g offset = 3, width = 6 - 3px of border is drawn outside active window, and 3px is drawn inside the active window location.
     //  border is drawn fully inside the area of active window with border between window and the border - offset = -3px and width = 3px
 
-    public void Hide() 
-    { 
-        if(!isWindowVisible || overlayWindow.IsNull)
+    public async Task Hide()
+    {
+        if (overlayWindow.IsNull)
         {
-            Logger.Warning("BorderRenderer. Cant hide border as it is not visible.");
+            Logger.Warning("BorderRenderer. Cant hide border - overlay window is null.");
             return;
         }
 
-        _animator.CancelCurrentAnimation();
-        _ = HideWithAnimationAsync();
+        // Acquire lock to serialize show/hide operations
+        await _operationLock.WaitAsync();
+        try
+        {
+            // Re-check visibility inside lock to avoid race conditions
+            if (!isWindowVisible)
+            {
+                Logger.Debug("BorderRenderer. Border already hidden, skipping hide operation.");
+                return;
+            }
+
+            _animator.CancelCurrentAnimation();
+            await HideWithAnimationAsync();
+        }
+        finally
+        {
+            _operationLock.Release();
+        }
     }
 
     private async Task HideWithAnimationAsync()
@@ -273,7 +308,7 @@ internal class BorderRenderer : IDisposable
         {
             var result = PInvoke.SetProcessDpiAwarenessContext((DPI_AWARENESS_CONTEXT)(-4));
 
-            if(result == false)
+            if (result == false)
                 Logger.Error($"BorderRenderer. Error setting DPI awarness. Error Code: {Marshal.GetLastWin32Error()}");
             else
                 Logger.Info("BorderRenderer. DPI awarness enabled");
@@ -318,9 +353,9 @@ internal class BorderRenderer : IDisposable
 
             wHwnd = PInvoke.CreateWindowEx(
                 WINDOW_EX_STYLE.WS_EX_TRANSPARENT |     // Mouse pass through below window
-                WINDOW_EX_STYLE.WS_EX_TOPMOST     |     // Always on top
-                WINDOW_EX_STYLE.WS_EX_TOOLWINDOW  |     // No taskbar
-                WINDOW_EX_STYLE.WS_EX_NOACTIVATE  |     // Can't get focus
+                WINDOW_EX_STYLE.WS_EX_TOPMOST |     // Always on top
+                WINDOW_EX_STYLE.WS_EX_TOOLWINDOW |     // No taskbar
+                WINDOW_EX_STYLE.WS_EX_NOACTIVATE |     // Can't get focus
                 WINDOW_EX_STYLE.WS_EX_LAYERED,          // Transparency
                 pClassName,
                 pWindowName,
@@ -419,6 +454,7 @@ internal class BorderRenderer : IDisposable
         {
             _bitmapCache?.Dispose();
             _animator?.Dispose();
+            _operationLock?.Dispose();
         }
 
         Destroy();
