@@ -47,7 +47,7 @@ internal class Program
             }
 
             Logger.Debug($"Main. Border invalidated for window: {window.ClassName}. Hiding border.");
-            await borderRenderer.Hide();
+            borderRenderer.Hide();
 
             lock (_borderStateLock)
             {
@@ -90,7 +90,7 @@ internal class Program
                     // Stop validator before showing new border to prevent old validator from hiding new border
                     windowValidator.Stop();
 
-                    await borderRenderer.Show(windowInfo);
+                    borderRenderer.Show(windowInfo);
 
                     lock (_borderStateLock)
                     {
@@ -103,7 +103,7 @@ internal class Program
                 {
                     Logger.Info($"Main. Hiding border {windowInfo}");
                     windowValidator.Stop();
-                    await borderRenderer.Hide();
+                    borderRenderer.Hide();
 
                     lock (_borderStateLock)
                     {

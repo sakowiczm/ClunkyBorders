@@ -5,7 +5,7 @@ internal record class Config
     public BorderConfig Border { get; init; }
     public WindowConfig Window { get; init; }
 
-    public Config() 
+    public Config()
     {
         Border = new BorderConfig();
         Window = new WindowConfig();
@@ -25,10 +25,8 @@ internal record class BorderConfig
     public int Width { get; set; }
     public int Offset { get; set; }
     public bool EnableBitmapCaching { get; set; }
-    public bool EnableAnimations { get; set; }
-    public int AnimationDuration { get; set; }
 
-    public bool IsValid => Color > 0 && Width > 1 && AnimationDuration > 0;
+    public bool IsValid => Color > 0 && Width > 1;
 }
 
 internal record class WindowExclusion

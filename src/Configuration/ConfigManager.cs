@@ -27,7 +27,7 @@ internal class ConfigManager
             var toml = File.ReadAllLines(configFilePath);
             var config = ParseToml(toml);
 
-            if(config.IsValid)
+            if (config.IsValid)
                 return config;
 
             Logger.Error("ConfigManager. Configuration is invalid - loading default configuration.");
@@ -131,8 +131,8 @@ internal class ConfigManager
 
         if (i == 0)
             return string.Empty;
-       
-        if(i > 0)
+
+        if (i > 0)
             return line.Substring(0, i).Trim();
 
         return line;
@@ -141,13 +141,11 @@ internal class ConfigManager
     private static BorderConfig GetBorderConfig(string[] lines)
     {
         bool isBorderSection = false;
-        
+
         int width = 0;
         uint color = 0;
         int offset = 0;
         bool enableBitmapCaching = true;  // Default to enabled
-        bool enableAnimations = false;    // Default to disabled
-        int animationDuration = 150;    // Default duration
 
         foreach (var line in lines)
         {
@@ -191,20 +189,6 @@ internal class ConfigManager
                                 enableBitmapCaching = cache;
                             }
                             break;
-
-                        case "enable_animations":
-                            if (bool.TryParse(value, out bool anim))
-                            {
-                                enableAnimations = anim;
-                            }
-                            break;
-
-                        case "animation_duration":
-                            if (int.TryParse(value, out int duration))
-                            {
-                                animationDuration = Math.Clamp(duration, 50, 1000);
-                            }
-                            break;
                     }
                 }
             }
@@ -215,9 +199,7 @@ internal class ConfigManager
             Width = width,
             Color = color,
             Offset = offset,
-            EnableBitmapCaching = enableBitmapCaching,
-            EnableAnimations = enableAnimations,
-            AnimationDuration = animationDuration
+            EnableBitmapCaching = enableBitmapCaching
         };
     }
 

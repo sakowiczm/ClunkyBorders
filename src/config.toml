@@ -3,8 +3,6 @@ width = 6
 offset = 3
 color = 0xFFFFA500
 enable_bitmap_caching = true
-enable_animations = false
-animation_duration = 200
 
 [Window]
 validation_interval = 250
