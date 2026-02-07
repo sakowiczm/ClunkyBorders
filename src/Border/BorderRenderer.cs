@@ -125,6 +125,7 @@ internal class BorderRenderer : IDisposable
             if (screenDc == default)
             {
                 Logger.Error($"BorderRenderer. Failed to get screen DC. Error code: {Marshal.GetLastWin32Error()}");
+                return;
             }
 
             try

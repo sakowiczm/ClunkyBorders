@@ -34,7 +34,7 @@ internal class Program
         using var trayManager = new TrayManager(iconLoader);
         using var windowMonitor = new WindowMonitor();
 
-        windowValidator.WindowInvalidated += async (sender, window) =>
+        windowValidator.WindowInvalidated += (sender, window) =>
         {
             // Only hide if this is the window that currently has the border
             lock (_borderStateLock)

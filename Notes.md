@@ -88,8 +88,8 @@
 
 ## Todo
 
-- Offset - document & test when not using window manager that introduce gap
+- Z-order issue - border is drawn over window task bar vs. border color changes - describe the problem in readme Known issues
+- Offset - document & test when not using window manager that introduce gap - does not make sense if no topmost, or above active window
 - Command line parameter to point to different config file location
-- Z-order issue - border is drawn over window task bar vs. border color changes
 - Add About window
 

@@ -89,7 +89,7 @@ internal static class Logger
             ? $"{message} | Exception: {exception.GetType().Name} - {exception.Message}\n{exception.StackTrace}"
             : message;
 
-        Log("ERROR", message);
+        Log("ERROR", fullMessage);
     }
 
 }
