@@ -61,20 +61,25 @@ internal class BorderRenderer : IDisposable
 
         var overlayRect = window.GetOverlayRect(borderConfiguration.Offset);
 
-        // Position window first
+        // Always hide before repositioning to prevent visual artifacts
+        if (isWindowVisible)
+        {
+            PInvoke.ShowWindow(overlayWindow, SHOW_WINDOW_CMD.SW_HIDE);
+        }
+
+        // Position window while hidden
         PInvoke.SetWindowPos(
             overlayWindow,
             HWND.HWND_TOPMOST,
             overlayRect.X, overlayRect.Y, overlayRect.Width, overlayRect.Height,
-            SET_WINDOW_POS_FLAGS.SWP_NOACTIVATE);
+            SET_WINDOW_POS_FLAGS.SWP_NOACTIVATE | SET_WINDOW_POS_FLAGS.SWP_HIDEWINDOW);
 
-        if (!isWindowVisible)
-        {
-            PInvoke.ShowWindow(overlayWindow, SHOW_WINDOW_CMD.SW_SHOWNOACTIVATE);
-            isWindowVisible = true;
-        }
-
+        // Draw new content
         DrawBorder(overlayRect.Width, overlayRect.Height, window.DPI, 255);
+
+        // Show with new content
+        PInvoke.ShowWindow(overlayWindow, SHOW_WINDOW_CMD.SW_SHOWNOACTIVATE);
+        isWindowVisible = true;
 
         Logger.Debug($"""
                       BorderRenderer. Border shown.
