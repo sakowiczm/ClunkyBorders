@@ -5,6 +5,7 @@ namespace ClunkyBorders.Common;
 internal static class Logger
 {
     public static string LogFilePath { get; private set; }
+    public static bool IsLoggingDisabled { get; private set; }
     private static readonly Channel<string> _logChannel;
     private static readonly Task _loggingTask;
     private static readonly CancellationTokenSource _cancellationTokenSource;
@@ -28,12 +29,39 @@ internal static class Logger
         AppDomain.CurrentDomain.ProcessExit += OnProcessExit;
     }
 
+    public static void Initialize(string? logDirectory = null, bool disableLogging = false)
+    {
+        IsLoggingDisabled = disableLogging;
+
+        if (disableLogging)
+        {
+            LogFilePath = string.Empty;
+            return;
+        }
+
+        if (string.IsNullOrEmpty(logDirectory))
+            return;
+
+        var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+        LogFilePath = Path.Combine(logDirectory, $"ClunkyBorder_{timestamp}.log");
+    }
+
     private static async Task ProcessLogQueueAsync()
     {
         var token = _cancellationTokenSource.Token;
 
         try
         {
+            // If logging is disabled, just drain the channel without writing to file
+            if (IsLoggingDisabled)
+            {
+                await foreach (var _ in _logChannel.Reader.ReadAllAsync(token))
+                {
+                    // Discard log entries
+                }
+                return;
+            }
+
             using var fileStream = new FileStream(LogFilePath, FileMode.Append, FileAccess.Write, FileShare.Read, 4096, true);
             using var writer = new StreamWriter(fileStream) { AutoFlush = false };
 
@@ -47,7 +75,7 @@ internal static class Logger
                 }
             }
         }
-        catch(Exception ex)
+        catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Logger error: {ex}");
         }

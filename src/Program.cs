@@ -3,6 +3,7 @@ using ClunkyBorders.Border;
 using ClunkyBorders.Common;
 using ClunkyBorders.Configuration;
 using ClunkyBorders.Tray;
+using System.CommandLine;
 using Windows.Win32;
 using Windows.Win32.Foundation;
 
@@ -14,19 +15,96 @@ internal class Program
 
     private static int Main(string[] args)
     {
+        var rootCommand = new RootCommand("ClunkyBorders - Window border overlay application");
+
+        var configOption = new Option<string?>(
+            aliases: ["--config", "-c"],
+            description: "Path to configuration file (default: config.toml in executable directory)")
+        {
+            ArgumentHelpName = "path"
+        };
+
+        var logsOption = new Option<string?>(
+            aliases: ["--logs", "-l"],
+            description: "Directory for log files (default: executable directory). Can be relative or absolute path.")
+        {
+            ArgumentHelpName = "path"
+        };
+
+        var noLogsOption = new Option<bool>(
+            aliases: ["--no-logs"],
+            description: "Disable log file creation. If specified, no log files will be written.");
+
+        rootCommand.AddOption(configOption);
+        rootCommand.AddOption(logsOption);
+        rootCommand.AddOption(noLogsOption);
+
+        rootCommand.SetHandler(Run, configOption, logsOption, noLogsOption);
+
+        return rootCommand.Invoke(args);
+    }
+
+    private static void Run(string? configPath, string? logsDir, bool noLogs)
+    {
+        // Handle logging configuration
+        if (noLogs)
+        {
+            // Disable logging entirely
+            Logger.Initialize(disableLogging: true);
+        }
+        else if (!string.IsNullOrEmpty(logsDir))
+        {
+            // Convert relative path to absolute path
+            var absoluteLogsPath = Path.IsPathRooted(logsDir)
+                ? logsDir
+                : Path.GetFullPath(logsDir);
+
+            if (!Directory.Exists(absoluteLogsPath))
+            {
+                //Console.WriteLine($"Error: Log directory does not exist: {absoluteLogsPath}");
+                //Console.Out.Flush();
+                
+                Logger.Error($"Error: Log directory does not exist: {absoluteLogsPath}");
+                Environment.Exit(1);
+            }
+
+            Logger.Initialize(absoluteLogsPath);
+        }
+
         Logger.Info($"ClunkyBorder Starting");
-        Logger.Info($"Log file: {Logger.LogFilePath}");
+        if (!Logger.IsLoggingDisabled)
+        {
+            Logger.Info($"Log file: {Logger.LogFilePath}");
+        }
+        else
+        {
+            // todo: anyway we won't be able to read this
+            Logger.Info($"Info: Logging disabled");
+        }
+
         Logger.Info($"OS Version: {Environment.OSVersion}");
+
+        // Validate config file path if provided
+        if (!string.IsNullOrEmpty(configPath))
+        {
+            if (!File.Exists(configPath))
+            {
+                Logger.Error($"Configuration file not found: {configPath}");
+                Console.Error.WriteLine($"Error: Configuration file not found: {configPath}");
+                Environment.Exit(1);
+            }
+            Logger.Info($"Using configuration file: {configPath}");
+        }
 
         using var instanceManager = new InstanceManager();
 
         if (!instanceManager.IsSingleInstance())
         {
             Logger.Warning("Another instance is already running. Exiting.");
-            return 1;
+            Environment.Exit(1);
         }
 
-        var config = ConfigManager.Load();
+        var config = ConfigManager.Load(configPath ?? "");
 
         var iconLoader = new IconLoader();
         using var borderRenderer = new BorderRenderer(config.Border);
@@ -160,8 +238,6 @@ internal class Program
         windowMonitor.Stop();
 
         _cancellationTokenSource?.Dispose();
-
-        return 0;
     }
 
     private static bool IsWindowExcluded(Window windowInfo, WindowConfig config)
