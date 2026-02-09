@@ -33,6 +33,7 @@ internal class Program
         using var windowValidator = new WindowValidator(config.Window.ValidationInterval);
         using var trayManager = new TrayManager(iconLoader);
         using var windowMonitor = new WindowMonitor();
+        using var eventThrottler = new WindowEventThrottler();
 
         windowValidator.WindowInvalidated += (sender, window) =>
         {
@@ -87,21 +88,47 @@ internal class Program
                         return;
                     }
 
-                    // Stop validator before showing new border to prevent old validator from hiding new border
+                    // Stop validator before any border operations
                     windowValidator.Stop();
 
-                    borderRenderer.Show(windowInfo);
-
-                    lock (_borderStateLock)
-                    {
-                        _currentBorderedWindow = windowInfo.Handle;
-                    }
-
-                    windowValidator.Start(windowInfo);
+                    // Handle window event with throttling
+                    eventThrottler.HandleWindowEvent(
+                        windowInfo,
+                        immediateAction: (window) =>
+                        {
+                            borderRenderer.Show(window);
+                            lock (_borderStateLock)
+                            {
+                                _currentBorderedWindow = window.Handle;
+                            }
+                            windowValidator.Start(window);
+                        },
+                        rapidEventAction: () =>
+                        {
+                            borderRenderer.Hide();
+                            lock (_borderStateLock)
+                            {
+                                _currentBorderedWindow = HWND.Null;
+                            }
+                        },
+                        delayedAction: (window) =>
+                        {
+                            borderRenderer.Show(window);
+                            lock (_borderStateLock)
+                            {
+                                _currentBorderedWindow = window.Handle;
+                            }
+                            windowValidator.Start(window);
+                        }
+                    );
                 }
                 else
                 {
                     Logger.Info($"Main. Hiding border {windowInfo}");
+
+                    // Cancel any pending delayed actions
+                    eventThrottler.CancelPending();
+
                     windowValidator.Stop();
                     borderRenderer.Hide();
 
