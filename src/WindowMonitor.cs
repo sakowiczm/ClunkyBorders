@@ -12,6 +12,7 @@ internal class WindowMonitor : IDisposable
 
     private bool isStarted;
     private HWINEVENTHOOK eventHook;
+    private WINEVENTPROC? onWindowChangeDelegate;
 
     private bool disposed = false;
 
@@ -27,11 +28,14 @@ internal class WindowMonitor : IDisposable
 
             Logger.Debug("WindowMonitor. Starting.");
 
+            // Store delegate reference to prevent garbage collection
+            onWindowChangeDelegate = OnWindowChange;
+
             eventHook = PInvoke.SetWinEventHook(
                 PInvoke.EVENT_SYSTEM_FOREGROUND,
                 PInvoke.EVENT_OBJECT_LOCATIONCHANGE,
                 HMODULE.Null,                           // In process hook
-                OnWindowChange,                         // In process callback function
+                onWindowChangeDelegate,
                 0,                                      // All processes
                 0,                                      // All threads
                 PInvoke.WINEVENT_OUTOFCONTEXT           // In process hook
@@ -70,6 +74,8 @@ internal class WindowMonitor : IDisposable
                 PInvoke.UnhookWinEvent(eventHook);
                 eventHook = default;
             }
+
+            onWindowChangeDelegate = null;
 
             isStarted = false;
             Logger.Debug("WindowMonitor. Stopped.");

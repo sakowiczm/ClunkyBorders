@@ -10,6 +10,7 @@ namespace ClunkyBorders.Tray;
 internal class TrayManager : IDisposable
 {
     private HWND messageWindow;
+    private WNDPROC? wndProcDelegate;
 
     private const string TrayIconWindowClass = "ClunkyBorderTrayIconWindowClass";
     private const string OverlayWindowName = "ClunkyBorderTrayWindow";
@@ -52,10 +53,13 @@ internal class TrayManager : IDisposable
         fixed (char* pClassName = TrayIconWindowClass)
         fixed (char* pWindowName = OverlayWindowName)
         {
+            // Store delegate reference to prevent garbage collection
+            wndProcDelegate = WndProc;
+
             var atom = PInvoke.RegisterClassEx(new WNDCLASSEXW
             {
                 cbSize = (uint)Marshal.SizeOf<WNDCLASSEXW>(),
-                lpfnWndProc = WndProc,
+                lpfnWndProc = wndProcDelegate,
                 hInstance = hInstance,
                 lpszClassName = pClassName
             });
@@ -179,6 +183,8 @@ internal class TrayManager : IDisposable
         {
             Logger.Error($"TrayManager. Error destroying window. Error code: {Marshal.GetLastWin32Error()}");
         }
+
+        wndProcDelegate = null;
     }
 
     public void Dispose()
