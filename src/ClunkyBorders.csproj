@@ -14,6 +14,7 @@
 	<IlcGenerateMstatFile>true</IlcGenerateMstatFile>
 	<PublishTrimmed>true</PublishTrimmed>
 	<TrimMode>link</TrimMode>
+	<EnableTrimAnalyzer>true</EnableTrimAnalyzer>
   </PropertyGroup>
 
   <ItemGroup>

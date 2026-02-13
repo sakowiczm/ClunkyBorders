@@ -15,6 +15,8 @@ internal class Program
 
     private static int Main(string[] args)
     {
+        ConsoleManager.TryAttachToParentConsole();
+
         var rootCommand = new RootCommand("ClunkyBorders - Window border overlay application");
 
         var configOption = new Option<string?>(
@@ -46,6 +48,9 @@ internal class Program
 
     private static void Run(string? configPath, string? logsDir, bool noLogs)
     {
+        Logger.Info($"ClunkyBorder Starting");
+        Logger.Info($"OS Version: {Environment.OSVersion}");
+
         // Handle logging configuration
         if (noLogs)
         {
@@ -61,36 +66,28 @@ internal class Program
 
             if (!Directory.Exists(absoluteLogsPath))
             {
-                //Console.WriteLine($"Error: Log directory does not exist: {absoluteLogsPath}");
-                //Console.Out.Flush();
-                
-                Logger.Error($"Error: Log directory does not exist: {absoluteLogsPath}");
+                Console.WriteLine($"Error: Log directory does not exist: {absoluteLogsPath}");
                 Environment.Exit(1);
             }
 
             Logger.Initialize(absoluteLogsPath);
         }
-
-        Logger.Info($"ClunkyBorder Starting");
+        
         if (!Logger.IsLoggingDisabled)
         {
             Logger.Info($"Log file: {Logger.LogFilePath}");
         }
         else
         {
-            // todo: anyway we won't be able to read this
-            Logger.Info($"Info: Logging disabled");
-        }
+            Console.WriteLine("Info: Logging disabled");
+        }       
 
-        Logger.Info($"OS Version: {Environment.OSVersion}");
-
-        // Validate config file path if provided
         if (!string.IsNullOrEmpty(configPath))
         {
             if (!File.Exists(configPath))
             {
-                Logger.Error($"Configuration file not found: {configPath}");
-                Console.Error.WriteLine($"Error: Configuration file not found: {configPath}");
+                Console.WriteLine($"Error: Configuration file not found: {configPath}");
+                Logger.Error($"Error: Configuration file not found: {configPath}");
                 Environment.Exit(1);
             }
             Logger.Info($"Using configuration file: {configPath}");
@@ -153,7 +150,10 @@ internal class Program
 
                 if (windowInfo != null && windowInfo.CanHaveBorder())
                 {
-                    // todo: describe / add to configuration
+                    // todo: add to configuration
+
+                    // Animaitons may delay displaying window (e.g Exploler)
+                    // we don't want to display the border for window that is not yet ready
                     await DelayIfWindowIsNotReady(windowInfo, 30, 700, ct);
 
                     if (ct.IsCancellationRequested) return;

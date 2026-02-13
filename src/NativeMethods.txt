@@ -63,3 +63,6 @@ EVENT_OBJECT_HIDE
 EVENT_SYSTEM_MINIMIZESTART
 IsWindow
 IsWindowVisible
+AttachConsole
+GetStdHandle
+STD_HANDLE
