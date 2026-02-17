@@ -19,7 +19,7 @@ internal static class ConsoleManager
     /// Attempts to attach to the parent process's console.
     /// Returns true if successfully attached to a console, false otherwise.
     /// </summary>
-    public static bool TryAttachToParentConsole()
+    public static bool Attach()
     {
         // Try to attach to parent console (e.g., cmd.exe, PowerShell)
         if (PInvoke.AttachConsole(ATTACH_PARENT_PROCESS))

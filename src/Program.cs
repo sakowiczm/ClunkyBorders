@@ -15,7 +15,7 @@ internal class Program
 
     private static int Main(string[] args)
     {
-        ConsoleManager.TryAttachToParentConsole();
+        ConsoleManager.Attach();
 
         var rootCommand = new RootCommand("ClunkyBorders - Window border overlay application");
 
