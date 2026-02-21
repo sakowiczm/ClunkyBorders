@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.Graphics.Dwm;
+using Windows.Win32.Graphics.Gdi;
 using Windows.Win32.UI.WindowsAndMessaging;
 
 namespace ClunkyBorders;
@@ -23,6 +24,8 @@ internal record Window
 
     public uint DPI { get; init; }
 
+    public bool IsFullscreen { get; init; }
+
     public RECT GetOverlayRect(int size = 0)
     {
         if (size == 0)
@@ -37,7 +40,7 @@ internal record Window
 
     public bool CanHaveBorder()
     {
-        return State == WindowState.Normal && IsParent && !Rect.IsEmpty;
+        return State == WindowState.Normal && IsParent && !Rect.IsEmpty && !IsFullscreen;
     }
 
     public override string ToString()
@@ -49,6 +52,7 @@ internal record Window
                     State: {State.ToString()}
                     IsParent: {IsParent}
                     DPI: {DPI}
+                    IsFullscreen: {IsFullscreen}
                     Rect: {Rect.left}, {Rect.top}, {Rect.right}, {Rect.bottom}
                 """;
     }
@@ -103,6 +107,7 @@ internal record Window
             var state = GetState(hwnd);
             var isParent = IsParentWindow(hwnd);
             uint dpi = PInvoke.GetDpiForWindow(hwnd);
+            var isFullscreen = IsWindowFullscreen(hwnd, rect);
 
             return new Window
             {
@@ -112,7 +117,8 @@ internal record Window
                 Rect = rect,
                 State = state,
                 IsParent = isParent,
-                DPI = dpi
+                DPI = dpi,
+                IsFullscreen = isFullscreen,
             };
         }
         catch (Exception ex)
@@ -227,6 +233,50 @@ internal record Window
             3 => WindowState.Maximized,
             _ => WindowState.Unknown,
         };
+    }
+
+    private static unsafe bool IsWindowFullscreen(HWND hwnd, RECT windowRect)
+    {
+        try
+        {
+            // Get the monitor that contains this window
+            var hMonitor = PInvoke.MonitorFromWindow(hwnd, MONITOR_FROM_FLAGS.MONITOR_DEFAULTTONEAREST);
+
+            if (hMonitor == IntPtr.Zero)
+            {
+                Logger.Debug($"Window. Could not get monitor for window {hwnd}");
+                return false;
+            }
+
+            // Get monitor information
+            var monitorInfo = new MONITORINFO();
+            monitorInfo.cbSize = (uint)Marshal.SizeOf<MONITORINFO>();
+
+            if (!PInvoke.GetMonitorInfo(hMonitor, ref monitorInfo))
+            {
+                Logger.Debug($"Window. Could not get monitor info. Error: {Marshal.GetLastWin32Error()}");
+                return false;
+            }
+
+            // Compare window rect with monitor rect
+            // A window is fullscreen if it covers the entire monitor
+            var monitorRect = monitorInfo.rcMonitor;
+
+            bool coversMonitor =
+                windowRect.left <= monitorRect.left &&
+                windowRect.top <= monitorRect.top &&
+                windowRect.right >= monitorRect.right &&
+                windowRect.bottom >= monitorRect.bottom;
+
+            Logger.Debug($"Window. Fullscreen check for {hwnd}: Window({windowRect.left},{windowRect.top},{windowRect.right},{windowRect.bottom}) vs Monitor({monitorRect.left},{monitorRect.top},{monitorRect.right},{monitorRect.bottom}) = {coversMonitor}");
+
+            return coversMonitor;
+        }
+        catch (Exception ex)
+        {
+            Logger.Error($"Window. Error checking fullscreen status for {hwnd}.", ex);
+            return false;
+        }
     }
 
     private static unsafe string GetClassName(HWND hwnd)

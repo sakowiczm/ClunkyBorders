@@ -30,6 +30,7 @@ CreateDIBSection
 SelectObject
 UpdateLayeredWindow
 EVENT_OBJECT_LOCATIONCHANGE
+EVENT_OBJECT_STATECHANGE
 WINDOWPLACEMENT
 GetWindowPlacement
 GetAncestor
@@ -66,3 +67,7 @@ IsWindowVisible
 AttachConsole
 GetStdHandle
 STD_HANDLE
+MonitorFromWindow
+GetMonitorInfo
+MONITORINFO
+MONITOR_FROM_FLAGS
