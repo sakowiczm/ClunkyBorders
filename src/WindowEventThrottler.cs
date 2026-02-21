@@ -10,8 +10,10 @@ internal class WindowEventThrottler : IDisposable
 {
     private DateTime _lastEventTime = DateTime.MinValue;
     private Timer? _delayedActionTimer;
-    private readonly object _timerLock = new object();
+    private readonly object _timerLock = new();
     private Window? _pendingWindow;
+    private bool _timerActive = false;
+    private Action<Window>? _delayedAction;
 
     // If events happen within this window, consider it rapid movement (mouse drag)
     private const int RAPID_EVENT_THRESHOLD_MS = 200;
@@ -49,35 +51,14 @@ internal class WindowEventThrottler : IDisposable
             // Cancel any pending timer and schedule a new one
             lock (_timerLock)
             {
-                _delayedActionTimer?.Dispose();
                 _pendingWindow = window;
+                _delayedAction = delayedAction;
 
-                _delayedActionTimer = new Timer(_ =>
-                {
-                    try
-                    {
-                        Window? windowForDelayedAction;
-                        lock (_timerLock)
-                        {
-                            windowForDelayedAction = _pendingWindow;
-                            _pendingWindow = null;
-                        }
+                _delayedActionTimer ??= new Timer(OnDelayedActionTimer, null,
+                    Timeout.Infinite, Timeout.Infinite);
 
-                        if (windowForDelayedAction != null && windowForDelayedAction.IsValidForBorder())
-                        {
-                            Logger.Debug($"WindowEventThrottler. Delayed action timer fired. Executing delayed action for {windowForDelayedAction.ClassName}");
-                            delayedAction(windowForDelayedAction);
-                        }
-                        else
-                        {
-                            Logger.Debug($"WindowEventThrottler. Delayed action timer fired but window no longer valid. Skipping.");
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.Error($"WindowEventThrottler. Error in delayed action timer.", ex);
-                    }
-                }, null, DELAYED_ACTION_MS, Timeout.Infinite);
+                _delayedActionTimer.Change(DELAYED_ACTION_MS, Timeout.Infinite);
+                _timerActive = true;
             }
         }
         else
@@ -91,17 +72,49 @@ internal class WindowEventThrottler : IDisposable
             immediateAction(window);
         }
     }
+    
+    private void OnDelayedActionTimer(object? state)
+    {
+        try
+        {
+            Window? windowForDelayedAction;
+            lock (_timerLock)
+            {
+                if (!_timerActive)
+                    return;
 
-    /// <summary>
-    /// Cancels any pending delayed action.
-    /// </summary>
+                windowForDelayedAction = _pendingWindow;
+                _pendingWindow = null;
+                _timerActive = false;
+            }
+
+            if (windowForDelayedAction != null && windowForDelayedAction.IsValidForBorder())
+            {
+                Logger.Debug($"WindowEventThrottler. Delayed action timer fired. Executing delayed action for {windowForDelayedAction.ClassName}");
+                _delayedAction?.Invoke(windowForDelayedAction);
+            }
+            else
+            {
+                Logger.Debug($"WindowEventThrottler. Delayed action timer fired but window no longer valid. Skipping.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.Error($"WindowEventThrottler. Error in delayed action timer.", ex);
+        }
+    }    
+
     public void CancelPending()
     {
         lock (_timerLock)
         {
-            _delayedActionTimer?.Dispose();
-            _delayedActionTimer = null;
+            if (_delayedActionTimer != null && _timerActive)
+            {
+                _delayedActionTimer.Change(Timeout.Infinite, Timeout.Infinite);
+                _timerActive = false;
+            }
             _pendingWindow = null;
+            _delayedAction = null;
         }
     }
 
@@ -120,8 +133,10 @@ internal class WindowEventThrottler : IDisposable
         {
             lock (_timerLock)
             {
+                _timerActive = false;
                 _delayedActionTimer?.Dispose();
                 _delayedActionTimer = null;
+                _delayedAction = null;
             }
         }
 
