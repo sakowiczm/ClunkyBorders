@@ -40,8 +40,18 @@ internal class WindowValidator : IDisposable
     {
         lock (_lock)
         {
+            if (!_isRunning)
+                return;
+
             _isRunning = false;
             _validationTimer?.Change(Timeout.Infinite, Timeout.Infinite);
+        }
+
+        // Wait briefly for any in-flight callback to see _isRunning flag
+        Thread.Sleep(10);
+
+        lock (_lock)
+        {
             _currentWindow = null;
             Logger.Debug("WindowValidator. Stopped monitoring");
         }
@@ -51,6 +61,9 @@ internal class WindowValidator : IDisposable
     {
         try
         {
+            if (_disposed)
+                return;
+            
             Window? windowToValidate;
 
             lock (_lock)
@@ -96,10 +109,13 @@ internal class WindowValidator : IDisposable
         if (_disposed)
             return;
 
-        Stop();
-        _validationTimer?.Dispose();
-        _validationTimer = null;
+        Stop(); // This will set flags and wait
 
-        _disposed = true;
+        lock (_lock)
+        {
+            _validationTimer?.Dispose();
+            _validationTimer = null;
+            _disposed = true;
+        }
     }
 }
