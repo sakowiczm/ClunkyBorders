@@ -71,3 +71,4 @@ MonitorFromWindow
 GetMonitorInfo
 MONITORINFO
 MONITOR_FROM_FLAGS
+FreeConsole

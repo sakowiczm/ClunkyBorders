@@ -48,7 +48,7 @@ internal class Program
 
     private static void Run(string? configPath, string? logsDir, bool noLogs)
     {
-        Logger.Info($"ClunkyBorder Starting");
+        Logger.Info("ClunkyBorder Starting");
         Logger.Info($"OS Version: {Environment.OSVersion}");
 
         // Handle logging configuration
@@ -100,6 +100,14 @@ internal class Program
             Logger.Warning("Another instance is already running. Exiting.");
             Environment.Exit(1);
         }
+        
+        // Detach from console to prevent forced termination when console closes
+        // All early validation and startup messages have been displayed
+        if (ConsoleManager.IsAttached)
+        {
+            ConsoleManager.DetachFromConsole();
+            Logger.Info("Detached from parent console");
+        }        
 
         var config = ConfigManager.Load(configPath ?? "");
 
