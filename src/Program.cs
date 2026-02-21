@@ -11,7 +11,7 @@ internal class Program
 {
     private static CancellationTokenSource? _cancellationTokenSource;
     private static HWND _currentBorderedWindow = HWND.Null;
-    private static readonly object _borderStateLock = new object();
+    private static readonly object _borderStateLock = new();
 
     private static int Main(string[] args)
     {
@@ -133,10 +133,27 @@ internal class Program
 
         windowMonitor.WindowChanged += async (sender, windowInfo) =>
         {
-            // Cancel previous operation
-            _cancellationTokenSource?.Cancel();
+            // Cancel and dispose previous operation
+            var oldCts = _cancellationTokenSource;
             _cancellationTokenSource = new CancellationTokenSource();
             var ct = _cancellationTokenSource.Token;
+
+            // Dispose old CTS asynchronously to avoid blocking event handler
+            if (oldCts != null)
+            {
+                _ = Task.Run(() =>
+                {
+                    try
+                    {
+                        oldCts.Cancel();
+                        oldCts.Dispose();
+                    }
+                    catch (ObjectDisposedException)
+                    {
+                        // Already disposed, safe to ignore
+                    }
+                });
+            }
 
             try
             {
@@ -237,7 +254,9 @@ internal class Program
 
         windowMonitor.Stop();
 
+        _cancellationTokenSource?.Cancel();
         _cancellationTokenSource?.Dispose();
+        _cancellationTokenSource = null;
     }
 
     private static bool IsWindowExcluded(Window windowInfo, WindowConfig config)
