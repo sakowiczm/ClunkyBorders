@@ -2,20 +2,59 @@
 
 namespace ClunkyBorders.Common;
 
+internal enum LogLevel
+{
+    None = 0,
+    Error = 1,
+    Warn = 2,
+    Info = 3,
+    Debug = 4
+}
+
 internal static class Logger
 {
-    public static string LogFilePath { get; private set; }
-    public static bool IsLoggingDisabled { get; private set; }
-    private static readonly Channel<string> _logChannel;
-    private static readonly Task _loggingTask;
-    private static readonly CancellationTokenSource _cancellationTokenSource;
+#pragma warning disable CS8618
 
-    static Logger()
+    private static string LogFileName => $"ClunkyBorders_{DateTime.Now:yyyyMMdd}.log";
+    public static string LogFilePath { get; private set; }
+    public static LogLevel MinimumLogLevel { get; private set; }
+
+    private static Channel<string> _logChannel;
+    private static Task _loggingTask;
+    private static CancellationTokenSource _cancellationTokenSource;
+
+#pragma warning restore CS8618
+
+    public static void Initialize(string? logPath = null, LogLevel logLevel = LogLevel.Info)
     {
-        var exePath = Environment.ProcessPath ?? AppContext.BaseDirectory;
-        var exeDir = Path.GetDirectoryName(exePath) ?? AppContext.BaseDirectory;
-        var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-        LogFilePath = Path.Combine(exeDir, $"ClunkyBorder_{timestamp}.log");
+        MinimumLogLevel = logLevel;
+
+        if (logLevel == LogLevel.None)
+        {
+            LogFilePath = string.Empty;
+            return;
+        }
+
+        if (string.IsNullOrEmpty(logPath))
+            return;
+
+        // Convert relative path to absolute path
+        var absoluteLogsPath = Path.IsPathRooted(logPath)
+            ? logPath
+            : Path.GetFullPath(logPath);
+
+        if (!Directory.Exists(absoluteLogsPath))
+        {
+            Console.WriteLine($"Error: Log directory does not exist: {absoluteLogsPath}. \r\nUsing default path.");
+
+            var exePath = Environment.ProcessPath ?? AppContext.BaseDirectory;
+            var exeDir = Path.GetDirectoryName(exePath) ?? AppContext.BaseDirectory;
+            LogFilePath = Path.Combine(exeDir, LogFileName);
+        }
+        else
+        {
+            LogFilePath = Path.Combine(absoluteLogsPath, LogFileName);
+        }
 
         _logChannel = Channel.CreateBounded<string>(new BoundedChannelOptions(1000)
         {
@@ -29,23 +68,6 @@ internal static class Logger
         AppDomain.CurrentDomain.ProcessExit += OnProcessExit;
     }
 
-    public static void Initialize(string? logDirectory = null, bool disableLogging = false)
-    {
-        IsLoggingDisabled = disableLogging;
-
-        if (disableLogging)
-        {
-            LogFilePath = string.Empty;
-            return;
-        }
-
-        if (string.IsNullOrEmpty(logDirectory))
-            return;
-
-        var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-        LogFilePath = Path.Combine(logDirectory, $"ClunkyBorder_{timestamp}.log");
-    }
-
     private static async Task ProcessLogQueueAsync()
     {
         var token = _cancellationTokenSource.Token;
@@ -53,7 +75,7 @@ internal static class Logger
         try
         {
             // If logging is disabled, just drain the channel without writing to file
-            if (IsLoggingDisabled)
+            if (MinimumLogLevel == LogLevel.None)
             {
                 await foreach (var _ in _logChannel.Reader.ReadAllAsync(token))
                 {
@@ -88,36 +110,38 @@ internal static class Logger
         _loggingTask.Wait(TimeSpan.FromMilliseconds(500));
     }
 
-    private static void Log(string level, string message)
+    private static void Log(LogLevel logLevel, string message)
     {
         var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
-        var entry = $"[{timestamp}] [{level}] {message}";
+        var entry = $"[{timestamp}] [{logLevel}] {message}";
 
-        _logChannel.Writer.TryWrite(entry);
-
-        //Console.ForegroundColor = level switch
-        //{
-        //    "DEBUG" => ConsoleColor.DarkGray,
-        //    "INFO" => ConsoleColor.White,
-        //    "WARN" => ConsoleColor.Yellow,
-        //    "ERROR" => ConsoleColor.Red,
-        //    _ => Console.ForegroundColor
-        //};
-
-        //Console.WriteLine(entry);
-        //Console.ResetColor();
+        // Write to file if logLevel meets file threshold
+        if (logLevel <= MinimumLogLevel)
+        {
+            _logChannel.Writer.TryWrite(entry);
+        }
     }
 
-    public static void Debug(string message) => Log("DEBUG", message);
-    public static void Info(string message) => Log("INFO", message);
-    public static void Warning(string message) => Log("WARN", message);
+    public static void Debug(string message) => Log(LogLevel.Debug, message);
+    public static void Info(string message) => Log(LogLevel.Info, message);
+    public static void Warning(string message) => Log(LogLevel.Warn, message);
     public static void Error(string message, Exception? exception = null)
     {
         var fullMessage = exception != null
             ? $"{message} | Exception: {exception.GetType().Name} - {exception.Message}\n{exception.StackTrace}"
             : message;
 
-        Log("ERROR", fullMessage);
+        Log(LogLevel.Error, fullMessage);
     }
+
+    public static LogLevel GetLogLevel(string logLevel) => logLevel.ToLowerInvariant() switch
+    {
+        "debug" => LogLevel.Debug,
+        "info" => LogLevel.Info,
+        "warn" => LogLevel.Warn,
+        "error" => LogLevel.Error,
+        "none" => LogLevel.None,
+        _ => LogLevel.Info
+    };
 
 }

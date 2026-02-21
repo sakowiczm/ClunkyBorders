@@ -26,61 +26,37 @@ internal class Program
             ArgumentHelpName = "path"
         };
 
-        var logsOption = new Option<string?>(
+        var logsPathOption = new Option<string?>(
             aliases: ["--logs", "-l"],
             description: "Directory for log files (default: executable directory). Can be relative or absolute path.")
         {
             ArgumentHelpName = "path"
         };
 
-        var noLogsOption = new Option<bool>(
-            aliases: ["--no-logs"],
-            description: "Disable log file creation. If specified, no log files will be written.");
+        var logLevelOption = new Option<string>(
+            aliases: ["--log-level"],
+            getDefaultValue: () => "info",
+            description: "Log level: none, debug, info, warn, error");
 
         rootCommand.AddOption(configOption);
-        rootCommand.AddOption(logsOption);
-        rootCommand.AddOption(noLogsOption);
+        rootCommand.AddOption(logsPathOption);
+        rootCommand.AddOption(logLevelOption);
 
-        rootCommand.SetHandler(Run, configOption, logsOption, noLogsOption);
+        rootCommand.SetHandler(Run, configOption, logsPathOption, logLevelOption);
 
         return rootCommand.Invoke(args);
     }
 
-    private static void Run(string? configPath, string? logsDir, bool noLogs)
+    private static void Run(string? configPath, string? logPath, string logLevel)
     {
-        Logger.Info("ClunkyBorder Starting");
+        Logger.Initialize(logPath, Logger.GetLogLevel(logLevel));
+
+        Console.WriteLine("ClunkyBorder Starting...");
+        Logger.Info("ClunkyBorder Starting...");
+        Console.WriteLine($"OS Version: {Environment.OSVersion}");
         Logger.Info($"OS Version: {Environment.OSVersion}");
 
-        // Handle logging configuration
-        if (noLogs)
-        {
-            // Disable logging entirely
-            Logger.Initialize(disableLogging: true);
-        }
-        else if (!string.IsNullOrEmpty(logsDir))
-        {
-            // Convert relative path to absolute path
-            var absoluteLogsPath = Path.IsPathRooted(logsDir)
-                ? logsDir
-                : Path.GetFullPath(logsDir);
-
-            if (!Directory.Exists(absoluteLogsPath))
-            {
-                Console.WriteLine($"Error: Log directory does not exist: {absoluteLogsPath}");
-                Environment.Exit(1);
-            }
-
-            Logger.Initialize(absoluteLogsPath);
-        }
-        
-        if (!Logger.IsLoggingDisabled)
-        {
-            Logger.Info($"Log file: {Logger.LogFilePath}");
-        }
-        else
-        {
-            Console.WriteLine("Info: Logging disabled");
-        }       
+        Logger.Debug("test");
 
         if (!string.IsNullOrEmpty(configPath))
         {
@@ -100,16 +76,10 @@ internal class Program
             Logger.Warning("Another instance is already running. Exiting.");
             Environment.Exit(1);
         }
-        
-        // Detach from console to prevent forced termination when console closes
-        // All early validation and startup messages have been displayed
-        if (ConsoleManager.IsAttached)
-        {
-            ConsoleManager.DetachFromConsole();
-            Logger.Info("Detached from parent console");
-        }        
 
         var config = ConfigManager.Load(configPath ?? "");
+
+        ConsoleManager.Detach();
 
         var iconLoader = new IconLoader();
         using var borderRenderer = new BorderRenderer(config.Border);

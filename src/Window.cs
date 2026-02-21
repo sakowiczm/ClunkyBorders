@@ -76,7 +76,7 @@ internal record Window
 
         if (result.Failed)
         {
-            Logger.Warning($"WindowReadinessChecker. Failed to get cloaked attribute. Error code: {Marshal.GetLastWin32Error()}");
+            Logger.Warning($"Window. Failed to get cloaked attribute. Error code: {Marshal.GetLastWin32Error()}");
             // Assume ready if we can't check
             return true;
         }

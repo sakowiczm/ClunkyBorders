@@ -49,13 +49,16 @@ internal static class ConsoleManager
         IsAttached = false;
         return false;
     }
-    
+
     /// <summary>
     /// Detaches from the currently attached console.
     /// After detachment, Console.WriteLine() calls will silently fail (no exception).
     /// Returns true if successfully detached, false otherwise.
+    /// 
+    /// Detach from console to prevent forced termination when console closes
+    /// All early validation and startup messages have been displayed
     /// </summary>
-    public static bool DetachFromConsole()
+    public static bool Detach()
     {
         if (!IsAttached)
         {
