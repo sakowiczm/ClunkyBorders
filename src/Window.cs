@@ -235,7 +235,7 @@ internal record Window
         };
     }
 
-    private static unsafe bool IsWindowFullscreen(HWND hwnd, RECT windowRect)
+    private static bool IsWindowFullscreen(HWND hwnd, RECT windowRect)
     {
         try
         {
