@@ -5,7 +5,6 @@ using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.Graphics.Dwm;
 using Windows.Win32.Graphics.Gdi;
-using Windows.Win32.UI.HiDpi;
 using Windows.Win32.UI.WindowsAndMessaging;
 
 namespace ClunkyBorders.Border;
@@ -32,7 +31,7 @@ internal class BorderRenderer : IDisposable
         DWMWCP_ROUNDSMALL = 3
     }
 
-    public unsafe BorderRenderer(BorderConfig borderConfig)
+    public BorderRenderer(BorderConfig borderConfig)
     {
         try
         {
@@ -41,8 +40,6 @@ internal class BorderRenderer : IDisposable
             _bitmapCache = new BitmapCache(
                 borderConfig.EnableBitmapCaching,
                 maxSize: 20);
-
-            EnableDpiAwarness();
 
             overlayWindow = CreateWindow();
         }
@@ -219,23 +216,6 @@ internal class BorderRenderer : IDisposable
                 span[y * width + x] = borderColor;
                 span[y * width + (width - x - 1)] = borderColor;
             }
-        }
-    }
-
-    private unsafe void EnableDpiAwarness()
-    {
-        try
-        {
-            var result = PInvoke.SetProcessDpiAwarenessContext((DPI_AWARENESS_CONTEXT)(-4));
-
-            if (result == false)
-                Logger.Error($"BorderRenderer. Error setting DPI awarness. Error Code: {Marshal.GetLastWin32Error()}");
-            else
-                Logger.Info("BorderRenderer. DPI awarness enabled");
-        }
-        catch (Exception ex)
-        {
-            Logger.Error("BorderRenderer. Error enabling DPI awarness", ex);
         }
     }
 

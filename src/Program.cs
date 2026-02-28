@@ -77,6 +77,8 @@ internal class Program
             Environment.Exit(1);
         }
 
+        DpiManager.Enable();
+
         var config = ConfigManager.Load(configPath ?? "");
 
         ConsoleManager.Detach();
