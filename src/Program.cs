@@ -111,8 +111,10 @@ internal class Program
             }
         };
 
-        windowMonitor.WindowChanged += async (sender, windowInfo) =>
+        windowMonitor.WindowChanged += async (sender, eventData) =>
         {
+            var (windowInfo, eventType) = eventData;
+
             // Cancel and dispose previous operation
             var oldCts = _cancellationTokenSource;
             _cancellationTokenSource = new CancellationTokenSource();
@@ -166,8 +168,9 @@ internal class Program
                     // Stop validator before any border operations
                     windowValidator.Stop();
 
-                    // Handle window event with throttling
+                    // Handle window event with throttling (event type determines throttling behavior)
                     eventThrottler.HandleWindowEvent(
+                        eventType,
                         windowInfo,
                         immediateAction: (window) =>
                         {
@@ -188,12 +191,13 @@ internal class Program
                         },
                         delayedAction: (window) =>
                         {
-                            borderRenderer.Show(window);
+                            var freshWindow = Window.FromHandle(window.Handle) ?? window;
+                            borderRenderer.Show(freshWindow);
                             lock (_borderStateLock)
                             {
-                                _currentBorderedWindow = window.Handle;
+                                _currentBorderedWindow = freshWindow.Handle;
                             }
-                            windowValidator.Start(window);
+                            windowValidator.Start(freshWindow);
                         }
                     );
                 }

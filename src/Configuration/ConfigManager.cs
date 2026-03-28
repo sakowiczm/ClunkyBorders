@@ -27,6 +27,9 @@ internal class ConfigManager
             var toml = File.ReadAllLines(configFilePath);
             var config = ParseToml(toml);
 
+            // Log parsed border config for diagnostics
+            Logger.Info($"ConfigManager. Parsed BorderConfig - Color: 0x{config.Border.Color:X8}, Width: {config.Border.Width}, Offset: {config.Border.Offset}, Caching: {config.Border.EnableBitmapCaching}");
+
             if (config.IsValid)
                 return config;
 

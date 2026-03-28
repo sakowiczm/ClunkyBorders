@@ -212,6 +212,20 @@ internal record Window
         }
     }
 
+    public bool IsTopmost()
+    {
+        try
+        {
+            var exStyle = PInvoke.GetWindowLong(Handle, WINDOW_LONG_PTR_INDEX.GWL_EXSTYLE);
+            return (exStyle & (uint)WINDOW_EX_STYLE.WS_EX_TOPMOST) != 0;
+        }
+        catch (Exception ex)
+        {
+            Logger.Error($"Window. Error checking if window is topmost.", ex);
+            return false;
+        }
+    }
+
     private static WindowState GetState(HWND hwnd)
     {
         var placement = new WINDOWPLACEMENT();

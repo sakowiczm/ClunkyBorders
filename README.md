@@ -27,8 +27,20 @@ Default configuration file is `config.toml` uses [TOML](https://toml.io/en/) for
 ```
 [Border]
 Width = 5               # in pixels
+Offset = 6              # distance from the window edge
 Color = 0xFFFFA500      # HEX color in ARGB
 ```
+
+> **⚠️ Color Issues**
+> 
+> If the rendered border color doesn't match the color defined in your config file, try disabling window shadows. The border is drawn behind the active window, and shadows are often rendered above it, causing the color to appear dulled or different from what you configured.
+>
+> **To disable window shadows:**
+> 1. Press **Windows + R**, type `sysdm.cpl`, and press Enter
+> 2. Go to the **Advanced** tab, click **Settings** under Performance
+> 3. In the **Visual Effects** tab, uncheck **"Show shadows under windows"**
+> 4. Click **Apply** and **OK**, then restart your PC for changes to take effect
+
 
 ## Usage 
 
@@ -43,8 +55,9 @@ dotnet build
 dotnet run 
 ```
 
-To generate a standalone executable, run:
+To generate a standalone small executable, run:
 
 ```ps
 dotnet publish -c Release
 ```
+

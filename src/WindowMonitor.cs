@@ -8,13 +8,13 @@ namespace ClunkyBorders;
 
 internal class WindowMonitor : IDisposable
 {
-    public event EventHandler<Window?>? WindowChanged;
+    public event EventHandler<(Window? window, WindowEventType eventType)>? WindowChanged;
 
     private bool isStarted;
     private HWINEVENTHOOK locationEventHook;
     private HWINEVENTHOOK stateEventHook;
     private WINEVENTPROC? locationEventDelegate;
-    private WINEVENTPROC? stateEventDelegate;    
+    private WINEVENTPROC? stateEventDelegate;
 
     private bool disposed = false;
 
@@ -75,12 +75,12 @@ internal class WindowMonitor : IDisposable
             var window = Window.GetForeground();
             if (window != null)
             {
-                WindowChanged?.Invoke(this, window);
+                WindowChanged?.Invoke(this, (window, WindowEventType.ForegroundChange));
             }
 
             isStarted = true;
         }
-        catch(Exception ex) 
+        catch (Exception ex)
         {
             Logger.Error($"WindowMonitor. Error starting.", ex);
         }
@@ -142,20 +142,35 @@ internal class WindowMonitor : IDisposable
             switch (@event)
             {
                 case PInvoke.EVENT_OBJECT_LOCATIONCHANGE:
-                case PInvoke.EVENT_OBJECT_STATECHANGE:
                     {
                         // Only handle window-level changes changes, not child controls
                         if (idObject != 0) // 0 = OBJID_WINDOW
                             return;
 
-                        // For location/state changes, always get the current foreground window
+                        // For location changes, always get the current foreground window
                         // instead of using the hwnd from the event, as apps like Windows Terminal
                         // may fire events for child windows that aren't the actual foreground window
                         var foregroundWindow = Window.GetForeground();
                         if (foregroundWindow != null)
                         {
                             Logger.Debug($"WindowMonitor. Processing {GetEventName(@event)} for foreground window: {foregroundWindow.ClassName}");
-                            WindowChanged?.Invoke(this, foregroundWindow);
+                            WindowChanged?.Invoke(this, (foregroundWindow, WindowEventType.LocationChange));
+                        }
+                        return;
+                    }
+
+                case PInvoke.EVENT_OBJECT_STATECHANGE:
+                    {
+                        // Only handle window-level changes changes, not child controls
+                        if (idObject != 0) // 0 = OBJID_WINDOW
+                            return;
+
+                        // For state changes, always get the current foreground window
+                        var foregroundWindow = Window.GetForeground();
+                        if (foregroundWindow != null)
+                        {
+                            Logger.Debug($"WindowMonitor. Processing {GetEventName(@event)} for foreground window: {foregroundWindow.ClassName}");
+                            WindowChanged?.Invoke(this, (foregroundWindow, WindowEventType.StateChange));
                         }
                         return;
                     }
@@ -171,7 +186,7 @@ internal class WindowMonitor : IDisposable
                         if (!PInvoke.IsWindowVisible(hwnd) || !PInvoke.IsWindow(hwnd))
                         {
                             Logger.Debug($"WindowMonitor. Active window destruction/hide event detected: {hwnd}, event: {GetEventName(@event)}");
-                            WindowChanged?.Invoke(this, null);
+                            WindowChanged?.Invoke(this, (null, WindowEventType.ForegroundChange));
                         }
                         else
                         {
@@ -191,7 +206,7 @@ internal class WindowMonitor : IDisposable
 
             if (window != null && window.IsParent)
             {
-                WindowChanged?.Invoke(this, window);
+                WindowChanged?.Invoke(this, (window, WindowEventType.ForegroundChange));
             }
             else
             {

@@ -56,30 +56,75 @@ internal class BorderRenderer : IDisposable
         if (overlayWindow.IsNull)
             return;
 
-        var overlayRect = window.GetOverlayRect(borderConfiguration.Offset);
-
-        // Always hide before repositioning to prevent visual artifacts
-        if (isWindowVisible)
+        // Defensive check: ensure tracked window is still valid
+        if (!PInvoke.IsWindow(window.Handle))
         {
-            PInvoke.ShowWindow(overlayWindow, SHOW_WINDOW_CMD.SW_HIDE);
+            Logger.Warning("BorderRenderer. Tracked window handle is invalid. Aborting Show().");
+            return;
         }
 
-        // Position window while hidden
-        PInvoke.SetWindowPos(
-            overlayWindow,
-            HWND.HWND_TOPMOST,
-            overlayRect.X, overlayRect.Y, overlayRect.Width, overlayRect.Height,
-            SET_WINDOW_POS_FLAGS.SWP_NOACTIVATE | SET_WINDOW_POS_FLAGS.SWP_HIDEWINDOW);
+        bool isTrackedWindowTopmost = window.IsTopmost();
+        RECT overlayRect = window.GetOverlayRect(borderConfiguration.Offset);
 
-        // Draw new content
+        // Position overlay in correct z-order tier and below tracked window
+        if (isTrackedWindowTopmost)
+        {
+            // For TOPMOST tracked window: overlay must be in TOPMOST tier
+
+            // Move overlay into TOPMOST tier
+            PInvoke.SetWindowPos(
+                overlayWindow,
+                HWND.HWND_TOPMOST,
+                0, 0, 0, 0,
+                SET_WINDOW_POS_FLAGS.SWP_NOACTIVATE |
+                SET_WINDOW_POS_FLAGS.SWP_NOMOVE |
+                SET_WINDOW_POS_FLAGS.SWP_NOSIZE);
+
+            // Position overlay AFTER (below) tracked window within TOPMOST tier
+            PInvoke.SetWindowPos(
+                overlayWindow,
+                window.Handle,  // Position after (below) this window
+                overlayRect.X, overlayRect.Y, overlayRect.Width, overlayRect.Height,
+                SET_WINDOW_POS_FLAGS.SWP_NOACTIVATE);
+
+            Logger.Debug("BorderRenderer. Positioned overlay in TOPMOST tier, below tracked window.");
+        }
+        else
+        {
+            // For non-TOPMOST tracked window: overlay must be in non-TOPMOST tier
+
+            // Ensure overlay is in non-TOPMOST tier
+            PInvoke.SetWindowPos(
+                overlayWindow,
+                HWND.HWND_NOTOPMOST,
+                0, 0, 0, 0,
+                SET_WINDOW_POS_FLAGS.SWP_NOACTIVATE |
+                SET_WINDOW_POS_FLAGS.SWP_NOMOVE |
+                SET_WINDOW_POS_FLAGS.SWP_NOSIZE);
+
+            // Position overlay AFTER (below) tracked window within non-TOPMOST tier
+            PInvoke.SetWindowPos(
+                overlayWindow,
+                window.Handle,  // Position after (below) this window
+                overlayRect.X, overlayRect.Y, overlayRect.Width, overlayRect.Height,
+                SET_WINDOW_POS_FLAGS.SWP_NOACTIVATE);
+
+            Logger.Debug("BorderRenderer. Positioned overlay in non-TOPMOST tier, below tracked window.");
+        }
+
+        // Draw border content
         DrawBorder(overlayRect.Width, overlayRect.Height, window.DPI, 255);
 
-        // Show with new content
-        PInvoke.ShowWindow(overlayWindow, SHOW_WINDOW_CMD.SW_SHOWNOACTIVATE);
-        isWindowVisible = true;
+        // Show window if not already visible
+        if (!isWindowVisible)
+        {
+            PInvoke.ShowWindow(overlayWindow, SHOW_WINDOW_CMD.SW_SHOWNOACTIVATE);
+            isWindowVisible = true;
+        }
 
         Logger.Debug($"""
                       BorderRenderer. Border shown.
+                        Tracked window TOPMOST: {isTrackedWindowTopmost}
                         Original: {window.Rect.X}, {window.Rect.Y}, {window.Rect.Width}, {window.Rect.Height}
                         Adjusted: {overlayRect.X}, {overlayRect.Y}, {overlayRect.Width}, {overlayRect.Height}
                      """);
@@ -253,13 +298,12 @@ internal class BorderRenderer : IDisposable
 
             wHwnd = PInvoke.CreateWindowEx(
                 WINDOW_EX_STYLE.WS_EX_TRANSPARENT |     // Mouse pass through below window
-                WINDOW_EX_STYLE.WS_EX_TOPMOST |     // Always on top
                 WINDOW_EX_STYLE.WS_EX_TOOLWINDOW |     // No taskbar
                 WINDOW_EX_STYLE.WS_EX_NOACTIVATE |     // Can't get focus
                 WINDOW_EX_STYLE.WS_EX_LAYERED,          // Transparency
                 pClassName,
                 pWindowName,
-                WINDOW_STYLE.WS_POPUP,              // No borders, no title bar
+                WINDOW_STYLE.WS_SYSMENU | WINDOW_STYLE.WS_POPUP,
                 0, 0, 1, 1,                         // We will resize the window later
                 HWND.Null,                          // No parent window
                 HMENU.Null,                         // No menu

@@ -3,6 +3,16 @@
 namespace ClunkyBorders;
 
 /// <summary>
+/// Distinguishes between different window event types for throttling purposes.
+/// </summary>
+internal enum WindowEventType
+{
+    ForegroundChange,  // EVENT_SYSTEM_FOREGROUND - never throttle
+    LocationChange,    // EVENT_OBJECT_LOCATIONCHANGE - throttle
+    StateChange        // EVENT_OBJECT_STATECHANGE - throttle
+}
+
+/// <summary>
 /// Throttles rapid consecutive window events to prevent visual artifacts during mouse drag/resize operations.
 /// Detects rapid events and delays actions until movement stops.
 /// </summary>
@@ -25,11 +35,13 @@ internal class WindowEventThrottler : IDisposable
     /// <summary>
     /// Handles a window event, either executing immediately or delaying based on event timing.
     /// </summary>
+    /// <param name="eventType">The type of window event (foreground changes are never throttled)</param>
     /// <param name="window">The window that triggered the event</param>
     /// <param name="immediateAction">Action to execute immediately for non-rapid events (receives Window)</param>
     /// <param name="rapidEventAction">Action to execute during rapid events (e.g., hide)</param>
     /// <param name="delayedAction">Action to execute after rapid events stop (receives Window)</param>
     public void HandleWindowEvent(
+        WindowEventType eventType,
         Window window,
         Action<Window> immediateAction,
         Action rapidEventAction,
@@ -38,6 +50,17 @@ internal class WindowEventThrottler : IDisposable
         // Detect rapid consecutive events (mouse drag/resize in progress)
         var now = DateTime.UtcNow;
         var timeSinceLastEvent = (now - _lastEventTime).TotalMilliseconds;
+
+        // Never throttle foreground changes (ALT+TAB, taskbar clicks, etc.)
+        if (eventType == WindowEventType.ForegroundChange)
+        {
+            Logger.Debug($"WindowEventThrottler. Foreground change detected - bypassing throttle.");
+            CancelPending();
+            _lastEventTime = now;
+            immediateAction(window);
+            return;
+        }
+
         _lastEventTime = now;
 
         if (timeSinceLastEvent < RAPID_EVENT_THRESHOLD_MS && timeSinceLastEvent > 0)
@@ -72,7 +95,7 @@ internal class WindowEventThrottler : IDisposable
             immediateAction(window);
         }
     }
-    
+
     private void OnDelayedActionTimer(object? state)
     {
         try
@@ -102,7 +125,7 @@ internal class WindowEventThrottler : IDisposable
         {
             Logger.Error($"WindowEventThrottler. Error in delayed action timer.", ex);
         }
-    }    
+    }
 
     public void CancelPending()
     {

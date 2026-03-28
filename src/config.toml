@@ -1,6 +1,6 @@
 [Border]
-width = 6
-offset = 3
+width = 10
+offset = 6
 color = 0xFFFFA500
 enable_bitmap_caching = true
 
